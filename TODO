@@ -1,0 +1,4 @@
+- Look glib.
+- Look #define _destructor_ __attribute__ ((destructor)).
+- Define coding styles.
+- Create my own autogen.

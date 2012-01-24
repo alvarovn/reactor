@@ -1,0 +1,7 @@
+- 4ch indent, no tabs
+
+- structs in MixedCase, variables, functions in lower_case
+
+- header{
+      content;
+  }
