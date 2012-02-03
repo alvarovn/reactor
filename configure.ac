@@ -30,5 +30,13 @@ PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.22.0])
 
 # Checks for library functions.
 
+#
+# options and defaults
+#
+
+AC_ARG_ENABLE(debug,
+[  --enable-debug           specify you are building with debugging on],
+    AC_DEFINE(DEBUG, 1, [Define if you want compile for debugging.]))
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
