@@ -25,6 +25,7 @@
 #include <grp.h>
 
 #include "utils.h"
+#include "log.h"
 
 typedef struct _User User;
 

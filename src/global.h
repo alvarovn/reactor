@@ -22,6 +22,9 @@
 
 #define EXIT_FAILURE 1
 
-char* programname; 
+#define TRUE 1
+#define FALSE 0
+
+extern char* programname; 
 
 #endif

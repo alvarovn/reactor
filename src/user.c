@@ -23,8 +23,7 @@
 void free_users(User* u){
     User* uaux;
     
-    if(!u)
-        return;
+    if(!u) return;
     
     do{
         uaux = u->next;
@@ -36,10 +35,13 @@ void free_users(User* u){
 static User* load_user(const char* uname){
     User *u;
     
-    if((u = (User *) malloc(sizeof(User))) == NULL)
+    if((u = (User *) malloc(sizeof(User))) == NULL){
+        l_debug_e("Error on malloc() the user '%s'", uname);
         goto end;
+    }
     u->next = NULL;
     if((u->name = strdup(uname)) == NULL){
+        l_debug_e("Error copying the user name '%s'", uname);
         free_users(u);
         u = NULL;
         goto end;
@@ -55,28 +57,31 @@ User* load_users(const char* grname){
     char **gmem;
     
     u = NULL;
-    root = 0;
-    if ((gr = getgrnam(grname)) == NULL)
-      goto end;
+    root = FALSE;
+    if ((gr = getgrnam(grname)) == NULL){
+        l_warning("'%s' group doesn't exist.", grname);
+        goto end;
+    }
     for(gmem = gr->gr_mem; *gmem != NULL; gmem++){
         if(!root && str_eq(*gmem, "root"))
             root=1;
         if((uaux = load_user(*gmem)) == NULL){
+            l_error_e("Non-root users loading failure.");
             free_users(u);
             goto end;
         }
         uaux->next = u;
         u = uaux;
     }
+end:
     if(!root){
-        if((uaux = load_user("root")) == NULL){
-            free_users(u);
-            goto end;
-        }
+        if((uaux = load_user("root")) == NULL) 
+            die_e("'root' user loading failure.");
+
         uaux->next = u;
         u = uaux;
     }
-end:        
+
     return u;
 }
 

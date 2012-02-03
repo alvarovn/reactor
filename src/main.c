@@ -26,6 +26,8 @@
 #include "user.h"
 #include "log.h"
 
+char* programname;
+
 // TODO signal handlers
 
 
@@ -43,16 +45,9 @@ int main(int argc, char *argv[]) {
 //     retval = main_loop();
 //     return retval;
     programname = argv[0];
-    l_notice("prova: %s", "l_notice");
-    l_notice_e("prova: %s", "l_notice_e");
-    l_warning("prova: %s", "l_warning");
-    l_warning_e("prova: %s", "l_warning_e");
-    l_error("prova: %s", "l_error");
-    l_error_e("prova: %s", "l_error_e");
-    debug("prova: %s", "l_debug");
-    debug_e("prova: %s", "l_debug_e");
+
     User* u;
-    for(u = load_users("users");u;u=u->next){
+    for(u = load_users("events");u;u=u->next){
         printf(u->name);
         printf("\n");
     }
