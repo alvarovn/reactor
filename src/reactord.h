@@ -18,19 +18,19 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#ifndef DATABASE_H_INCLUDED
-#define DATABASE_H_INCLUDED
+#ifndef REACTOR_H_INCLUDED
+#define REACTOR_H_INCLUDED
 
-#include <glib.h>
+/* user.c */
 
-#include "eventnotice.h"
+typedef struct _User User;
 
-GHashTable* eventnotices;
-GHashTable* states;
+struct _User{
+    char *name;
+    User *next;
+};
 
-void notice_event(const char* id);
-char* get_db_representation(int);
-int add_trans(char* action, char* enids, char* to, char* from);
-int add_init_trans(char* action, char* enids, char* to);
+User* load_users(const char*);
+void free_users(User*);
 
 #endif

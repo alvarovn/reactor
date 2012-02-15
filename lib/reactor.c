@@ -18,13 +18,7 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#ifndef STATE_H_INCLUDED
-#define STATE_H_INCLUDED
 #include <glib.h>
 
-typedef struct State{
-    char* id;
-    GSList* transitions;
-} State;
+#include "reactor.h"
 
-#endif

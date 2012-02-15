@@ -17,24 +17,34 @@
     with this program; if not, write to the Free Software Foundation, Inc.,
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
-#ifndef USER_H_INCLUDED
-#define USER_H_INCLUDED
 
 #include <stdlib.h>
 #include <string.h>
-#include <grp.h>
+#include <stdbool.h>
 
-#include "utils.h"
-#include "log.h"
+#include "reactor.h"
 
-typedef struct _User User;
+typedef struct _eventnotice{
+    char* id;
+    RSList* currtrans;
+} EventNotice;
 
-struct _User{
-    char *name;
-    User *next;
-};
+EventNotice* en_new(const char* id){
+    EventNotice *en = NULL;
+    
+    if((en = (EventNotice *) malloc(sizeof(EventNotice))) == NULL){
+        dbg_e("Error on malloc() the event notice '%s'", id);
+        goto end;
+    }
+    
+    en->id = strdup(id);
+    
+    return en;
+}
 
-User* load_users(const char*);
-void free_users(User*);
-
-#endif
+void en_free(EventNotice *en){
+    reactor_slist_free(en->currtrans);
+    free(en->id);
+    free(en);
+    
+}

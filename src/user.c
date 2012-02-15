@@ -18,7 +18,11 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#include "user.h"
+#include <string.h>
+#include <stdlib.h>
+#include "reactor.h"
+
+#include "reactord.h"
 
 void free_users(User* u){
     User* uaux;
@@ -33,15 +37,15 @@ void free_users(User* u){
 }
 
 static User* load_user(const char* uname){
-    User *u;
+    User *u = NULL;
     
     if((u = (User *) malloc(sizeof(User))) == NULL){
-        l_debug_e("Error on malloc() the user '%s'", uname);
+        dbg_e("Error on malloc() the user '%s'", uname);
         goto end;
     }
     u->next = NULL;
     if((u->name = strdup(uname)) == NULL){
-        l_debug_e("Error copying the user name '%s'", uname);
+        dbg_e("Error copying the user name '%s'", uname);
         free_users(u);
         u = NULL;
         goto end;
@@ -59,14 +63,14 @@ User* load_users(const char* grname){
     u = NULL;
     root = FALSE;
     if ((gr = getgrnam(grname)) == NULL){
-        l_warning("'%s' group doesn't exist.", grname);
+        warn("'%s' group doesn't exist.", grname);
         goto end;
     }
     for(gmem = gr->gr_mem; *gmem != NULL; gmem++){
         if(!root && str_eq(*gmem, "root"))
             root=1;
         if((uaux = load_user(*gmem)) == NULL){
-            l_error_e("Non-root users loading failure.");
+            err("Non-root users loading failure.");
             free_users(u);
             goto end;
         }
@@ -76,7 +80,7 @@ User* load_users(const char* grname){
 end:
     if(!root){
         if((uaux = load_user("root")) == NULL) 
-            die_e("'root' user loading failure.");
+            die("'root' user loading failure.");
 
         uaux->next = u;
         u = uaux;

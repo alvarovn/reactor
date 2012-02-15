@@ -1,6 +1,6 @@
 /*
     This file is part of reactor.
-    
+
     Copyright (C) 2011  Álvaro Villalba Navarro <vn.alvaro@gmail.com>
 
     This program is free software; you can redistribute it and/or modify
@@ -17,14 +17,35 @@
     with this program; if not, write to the Free Software Foundation, Inc.,
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
-#ifndef GLOBAL_H_INCLUDED
-#define GLOBAL_H_INCLUDED
 
-#define EXIT_FAILURE 1
+#include <stdlib.h>
 
-#define TRUE 1
-#define FALSE 0
+#include "reactor.h"
 
-extern char* programname; 
+/*  For different purpose concept, but almost identical to eventnotice. 
+    Sort of code replication.
+*/
 
-#endif
+typedef struct _state {
+    char* id;
+    RSList* transitions;
+} State;
+
+State* state_new(const char* id) {
+    State *ste = NULL;
+
+    if ((ste = (State *) malloc(sizeof(State))) == NULL) {
+        dbg_e("Error on malloc() the state '%s'", id);
+        goto end;
+    }
+
+    ste->id = strdup(id);
+
+    return ste;
+}
+
+void state_free(State *ste){
+    reactor_slist_free_full(ste->transitions, trans_free);
+    free(en->id);
+    free(en);
+}
