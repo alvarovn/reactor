@@ -23,15 +23,16 @@
 #include "reactor.h"
 
 /*  For different purpose concept, but almost identical to eventnotice. 
-    Sort of code replication.
+    Sort of code replication?.
 */
 
-typedef struct _state {
+struct _state {
     char* id;
     RSList* transitions;
-} State;
+    unsigned int ntranspointers;
+};
 
-State* state_new(const char* id) {
+State* state_new(const char* id){
     State *ste = NULL;
 
     if ((ste = (State *) malloc(sizeof(State))) == NULL) {
@@ -40,12 +41,33 @@ State* state_new(const char* id) {
     }
 
     ste->id = strdup(id);
-
+    ste->transitions = NULL;
+    ste->ntranspointers = 0;
+end:
     return ste;
 }
 
-void state_free(State *ste){
-    reactor_slist_free_full(ste->transitions, trans_free);
-    free(en->id);
-    free(en);
+bool state_free(State *ste){
+    if(ste->ntranspointers-- > 0) return false;
+
+    reactor_slist_free_full(ste->transitions, (RDestroyNotify) trans_free);
+    free(ste->id);
+    free(ste);
+    return true;
+}
+
+void state_add_trans(State *ste, Transition *trans){
+    ste->transitions = reactor_slist_prepend(ste->transitions, trans);
+}
+
+const char* state_get_id(State *ste){
+    return ste->id;
+}
+
+void state_add_transpointer(State *ste){
+    ste->ntranspointers++;
+}
+
+const RSList* state_get_trans(State *ste){
+    return ste->transitions;
 }

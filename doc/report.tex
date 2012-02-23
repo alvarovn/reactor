@@ -44,9 +44,9 @@ priority and assigned deadlines to sets of those tasks (or iterations):\\*
   \item Main data structure of the daemon done and working.
   \item Wrappers to all the third party data structures (mainly glib).
     \subitem As it's expected to improve the efficiency of the software in the 
-	      future, we want to wrapper all the declarations of the third 
+	      future, we want to wrap all the declarations of the third 
 	      party basic data structures we use, so when we re-implement them
-	      we won't have to change any other non-related code.
+	      the changes to any other non-related code will be minimal.
   \item Daemon socket ready to receive events from other processes.
     \subitem The poll management will be performed by 'libevent'.
   \item Execute shell commands functionality.

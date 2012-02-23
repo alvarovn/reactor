@@ -20,6 +20,8 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <grp.h>
+
 #include "reactor.h"
 
 #include "reactord.h"

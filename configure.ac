@@ -3,7 +3,7 @@
 
 AC_PREREQ([2.68])
 AC_INIT([reactor], [0.0], [vn.alvaro@gmail.com])
-AC_CONFIG_SRCDIR([src/main.c])
+AC_CONFIG_SRCDIR([src/reactord.c])
 AC_CONFIG_HEADERS([config.h])
 
 AM_INIT_AUTOMAKE([foreign 1.11 -Wall -Wno-portability silent-rules tar-pax subdir-objects dist-bzip2])
@@ -16,6 +16,7 @@ AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
+#AC_PROG_RANLIB
 
 #Check for _GNU_SOURCE
 ##AC_USE_SYSTEM_EXTENSIONS

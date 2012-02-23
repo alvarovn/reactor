@@ -21,34 +21,37 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #include "reactor.h"
 
-typedef struct _Transition{
-    RHashTable* enrequisites;
+struct _transition{
+    RSList* enrequisites;
     unsigned int noticedevents;
+    unsigned int eventnotices;
     State* dest;
     ActionTypes at;
     void *typedaction;
-} Transition;
+};
 
 /* Action types */
-
-typedef struct _CmdAction{
+struct _cmdaction{
     int uid;
     char *shell;
     char *cmd;
-} CmdAction;
+};
 
 
 Transition* trans_new(State *dest){
     Transition *trans = NULL;
     
     if((trans = (Transition *) malloc(sizeof(Transition))) == NULL){
-        dbg_e("Error on malloc() the new transition'");
+        dbg_e("Error on malloc() the new transition'", NULL);
         goto end;
     }
-    trans->enrequisites = reactor_hash_table_new(reactor_str_hash, str_eq);
+    trans->enrequisites = NULL;
+    trans->noticedevents = 0;
+    trans->eventnotices = 0;
     trans->dest = dest;
 end:
     return trans;
@@ -61,7 +64,7 @@ bool trans_set_cmd_action(Transition *trans, const char *cmd, const char *shell,
     bool success = true;
     
     if((cmdactn = (CmdAction *) malloc(sizeof(CmdAction))) == NULL){
-        dbg_e("Error on malloc() the new command action'");
+        dbg_e("Error on malloc() the new command action'", NULL);
         success = false;
         goto end;
     }
@@ -74,23 +77,68 @@ end:
     return success;
 }
 
-static void trans_cmd_free(CmdAction *cmdactn){
+static void cmd_free(CmdAction *cmdactn){
     free(cmdactn->cmd);
     free(cmdactn->shell);
     free(cmdactn);
 }
 
 void trans_free(Transition *trans){
-    reactor_hash_table_destroy(trans->enrequisites);
+    reactor_slist_free(trans->enrequisites);
     switch(trans->at){
         case CMD_ACTION:
-            trans_cmd_free((CmdAction *) trans->typedaction);
+            cmd_free((CmdAction *) trans->typedaction);
             break;
     }
     free(trans);
     
 }
 
+static void cmd_execute(CmdAction *cmd){
+    // TODO Create a fork to monitor the execution
+    
+    switch (fork()) {
+    case -1:
+        err("Unable to fork, command won't be executed.");
+        break;
+    case 0:
+        /* child process */
+        if(setuid(cmd->uid) < 0){
+            err("Commands can't be executed as user %s", cmd->uid);
+        }
+        execl(cmd->shell, cmd->shell, "-c", cmd->cmd, NULL);
+        
+        /* If everything goes fine, it will never arrive here */
+        err("Unable to execute the shell command '%s'", cmd->shell);
+        break;
+    default:
+        /* parent process */
+        break;
+    }
+    
+}
+
 void trans_notice_event(Transition *trans){
     trans->noticedevents++;
+    if(trans->noticedevents++ < trans->eventnotices)
+        return;
+    /* If all the required events happened then we must execute the action */
+    switch(trans->at){
+        case CMD_ACTION:
+            cmd_execute((CmdAction *) trans->typedaction);
+            break;
+    }
+}
+
+void trans_add_requisite(Transition *trans, EventNotice *en){
+    reactor_slist_prepend(trans->enrequisites, en);
+    trans->eventnotices++;
+}
+
+const State* trans_get_dest(Transition *trans){
+    return trans->dest;
+}
+
+const RSList* trans_get_enrequisites(Transition *trans){
+    return trans->enrequisites;
 }

@@ -28,6 +28,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <errno.h>
 
 #include "reactor.h"
 
@@ -101,7 +102,7 @@ void die(const char *format, ...){
     va_start(args, format);
     rlog(LOG_ERR, format, args);
     va_end(args);
-    l_error("Aborted");
+    err("Aborted");
 
     exit(EXIT_FAILURE);
 }

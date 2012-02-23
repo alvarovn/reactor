@@ -1,23 +1,13 @@
-#SUBDIRS = src
 sbin_PROGRAMS = reactord
 
-reactord_CFLAGS= $(GLIB_CFLAGS)
+AM_CFLAGS = -std=c99 $(GLIB_CFLAGS) -I$(top_srcdir)/lib/ -g -O0
+AM_LDFLAGS = $(GLIB_LIBS)       
 
-reactord_SOURCES = \
-	src/main.c \
-	src/action.h \
-	src/database.c \
-	src/eventnotice.c \
-	src/eventnotice.h \
-	src/global.h \
-	src/state.c \
-	src/state.h \
-	src/transition.c \
-	src/transition.h \
-	src/user.c \
-	src/user.h \
-	src/log.c \
-	src/log.h \
-	src/utils.h
-
-reactor_LIBS= $(GLIB_LIBS)
+reactord_SOURCES =	src/reactord.h \
+				src/reactord.c \
+				src/user.c \
+				lib/reactor.h \
+				lib/log.c \
+				lib/eventnotice.c \
+				lib/state.c \
+				lib/transition.c  

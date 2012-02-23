@@ -1,6 +1,6 @@
 /*
     This file is part of reactor.
-    
+
     Copyright (C) 2011  Álvaro Villalba Navarro <vn.alvaro@gmail.com>
 
     This program is free software; you can redistribute it and/or modify
@@ -24,27 +24,52 @@
 
 #include "reactor.h"
 
-typedef struct _eventnotice{
-    char* id;
-    RSList* currtrans;
-} EventNotice;
+struct _eventnotice {
+    char *id;
+    RSList *currtrans;
+    unsigned int ntranspointers;
+};
 
-EventNotice* en_new(const char* id){
+EventNotice* en_new(const char* id) {
     EventNotice *en = NULL;
-    
-    if((en = (EventNotice *) malloc(sizeof(EventNotice))) == NULL){
+
+    if ((en = (EventNotice *) malloc(sizeof(EventNotice))) == NULL) {
         dbg_e("Error on malloc() the event notice '%s'", id);
         goto end;
     }
-    
+
     en->id = strdup(id);
-    
+    en->currtrans = NULL;
+    en->ntranspointers = 0;
+end:
     return en;
 }
 
-void en_free(EventNotice *en){
+bool en_free(EventNotice *en) {
+    if (en->ntranspointers-- > 0) return false;
+
     reactor_slist_free(en->currtrans);
     free(en->id);
     free(en);
-    
+    return true;
+}
+
+void en_add_curr_trans(EventNotice *en, Transition *trans) {
+    en->currtrans = reactor_slist_prepend(en->currtrans, trans);
+}
+
+void en_clear_curr_trans(EventNotice *en) {
+    reactor_slist_free(en->currtrans);
+}
+
+const char* en_get_id(EventNotice *en) {
+    return en->id;
+}
+
+const RSList* en_get_currtrans(EventNotice *en){
+    return en->currtrans;
+}
+
+void en_add_transpointer(EventNotice *en) {
+    en->ntranspointers++;
 }
