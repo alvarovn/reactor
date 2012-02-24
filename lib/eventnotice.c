@@ -60,6 +60,7 @@ void en_add_curr_trans(EventNotice *en, Transition *trans) {
 
 void en_clear_curr_trans(EventNotice *en) {
     reactor_slist_free(en->currtrans);
+    en->currtrans = NULL;
 }
 
 const char* en_get_id(EventNotice *en) {

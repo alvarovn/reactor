@@ -108,7 +108,6 @@ void err(const char *format, ...) PRINTF_ATTR(1, 2);
 void die(const char *format, ...) PRINTF_ATTR(1, 2);
 void close_log(void);
 
-#define DEBUG
 #ifdef DEBUG
 
 void l_debug(const char *format, ...) PRINTF_ATTR(1, 2);
@@ -158,12 +157,9 @@ Transition* trans_new(State *dest);
 bool trans_set_cmd_action(Transition *trans, const char *cmd, const char *shell, int uid);
 static void trans_cmd_free(CmdAction *cmdactn);
 void trans_free(Transition *trans);
-void trans_notice_event(Transition *trans);
+bool trans_notice_event(Transition *trans);
 void trans_add_requisite(Transition *trans, EventNotice *en);
 const State* trans_get_dest(Transition *trans);
 const RSList* trans_get_enrequisites(Transition *trans);
-
-
-/* cfg.c */
 
 #endif

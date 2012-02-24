@@ -51,6 +51,7 @@ static Transition* add_init_trans(char *action, char **enids, char *to, bool ini
     
     stt = (State *) reactor_hash_table_lookup(states, to);
     if(stt == NULL) stt = state_new(to);
+    reactor_hash_table_insert(states, state_get_id(stt), stt);
     
     trans = trans_new(stt);
     state_add_transpointer(stt);
@@ -70,7 +71,7 @@ static Transition* add_init_trans(char *action, char **enids, char *to, bool ini
         /* As it is an initial transition it should also be a current transition */
         if(init) en_add_curr_trans(en, trans);
     }
-    if(init) info("New transition to state '%s'.", to);
+    if(init) info("New initial transition to state '%s'.", to);
     return trans;
 }
 
@@ -86,8 +87,8 @@ static Transition* add_trans(char *action, char **enids, char *to, char *from){
     
     trans = add_init_trans(action, enids, to, false);
     state_add_trans(stt, trans);
-error:
     info("New transition from state '%s' to state '%s'.", from, to);
+error:
     return trans;
 }
 
@@ -98,7 +99,7 @@ static void notice_reactor_event(const ReactorEvent* revent){
     
     en = (EventNotice *) reactor_hash_table_lookup(eventnotices, revent->msg);
     if(en == NULL) {
-        info("Unknown event '%s' happened", revent->msg);
+        info("Unknown event '%s' happened.", revent->msg);
         return;
     }
 
@@ -106,24 +107,25 @@ static void notice_reactor_event(const ReactorEvent* revent){
     
     for (RSList *rsl = currtrans; rsl != NULL; rsl = reactor_slist_next(rsl)){
         
-        trans_notice_event((Transition *) rsl->data);
-        
-        for(RSList *rsl2 = state_get_trans( trans_get_dest((Transition *) rsl->data) );
-            rsl2 != NULL;
-            rsl2 = reactor_slist_next(rsl2)){
-                reactor_slist_prepend(ftrans, rsl2->data);
+        if(trans_notice_event((Transition *) rsl->data)){
+            /* forward on the state machine */
+            for(RSList *rsl2 = state_get_trans( trans_get_dest((Transition *) rsl->data) );
+                rsl2 != NULL;
+                rsl2 = reactor_slist_next(rsl2)){
+                    ftrans = reactor_slist_prepend(ftrans, rsl2->data);
+            }
         }
     }
     en_clear_curr_trans(en);
     
-    /* Insert into the events the current valid transitions */
+    /* Insert into eventnotices the new current valid transitions */
     
     for (RSList *rsl = ftrans; rsl != NULL; rsl = reactor_slist_next(rsl)){
         
         for(RSList *rsl2 = trans_get_enrequisites(rsl->data);
             rsl2 != NULL;
-            reactor_slist_next(rsl2)){
-                en_add_curr_trans(rsl2->data, rsl->data);
+            rsl2 = reactor_slist_next(rsl2)){
+                en_add_curr_trans((EventNotice *)rsl2->data, (Transition *)rsl->data);
             }
     }
     
@@ -147,20 +149,21 @@ int main(int argc, char *argv[]) {
     // TODO trap signals
     
     /* daemonize */
+#ifndef DEBUG
     pid = fork();
-//     switch(pid){
-//         case 0:
-//             /* child */
-//             dbg("Forked child running.", NULL);
-//             break;
-//         case -1:
-//             err("Unable to daemonize");
-//             fprintf(stderr, "Unable to daemonize\n");
-//         default:
-//             /* parent */
-//             goto exit;
-//     }
-    
+    switch(pid){
+        case 0:
+            /* child */
+            dbg("Forked child running.", NULL);
+            break;
+        case -1:
+            err("Unable to daemonize");
+            fprintf(stderr, "Unable to daemonize\n");
+        default:
+            /* parent */
+            goto exit;
+    }
+#endif
     /* redirect standard files to /dev/null */
     freopen( "/dev/null", "r", stdin);
     freopen( "/dev/null", "w", stdout);
@@ -177,7 +180,7 @@ int main(int argc, char *argv[]) {
 //     
     /* change current directory */
     if ((chdir("/")) < 0) {
-        err("Unable to change current directory to /");
+        err("Unable to change current directory to '/'.");
         goto exit;
     }
 
@@ -195,13 +198,21 @@ int main(int argc, char *argv[]) {
                      "event4",
                      NULL
                    };
-    add_init_trans("touch /home/lostevil/toma_ya", ens, "A", true);
+    add_init_trans("rm /home/lostevil/toma_ya;touch /home/lostevil/toma_ya;echo \"tomaya\">/home/lostevil/toma_ya", ens, "A", true);
+    add_trans("echo \"tomaya\">>/home/lostevil/toma_ya", ens, "B", "A");
     ReactorEvent event1 = {"event1", 0, 1};
     ReactorEvent event2 = {"event2", 0, 1};
     ReactorEvent event3 = {"event3", 0, 1};
     ReactorEvent event4 = {"event4", 0, 1};
     ReactorEvent event5 = {"event5", 0, 1};
     ReactorEvent event14 = {"event14", 0, 1};
+    notice_reactor_event(&event1);
+    notice_reactor_event(&event14);
+    notice_reactor_event(&event2);
+    notice_reactor_event(&event3);
+    notice_reactor_event(&event4);
+    notice_reactor_event(&event5);
+    
     notice_reactor_event(&event1);
     notice_reactor_event(&event14);
     notice_reactor_event(&event2);

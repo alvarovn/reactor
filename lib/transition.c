@@ -53,6 +53,8 @@ Transition* trans_new(State *dest){
     trans->noticedevents = 0;
     trans->eventnotices = 0;
     trans->dest = dest;
+    trans->at = CMD_ACTION;
+    trans->typedaction = NULL;
 end:
     return trans;
 }
@@ -98,40 +100,41 @@ static void cmd_execute(CmdAction *cmd){
     // TODO Create a fork to monitor the execution
     
     switch (fork()) {
-    case -1:
-        err("Unable to fork, command won't be executed.");
-        break;
-    case 0:
-        /* child process */
-        if(setuid(cmd->uid) < 0){
-            err("Commands can't be executed as user %s", cmd->uid);
-        }
-        execl(cmd->shell, cmd->shell, "-c", cmd->cmd, NULL);
-        
-        /* If everything goes fine, it will never arrive here */
-        err("Unable to execute the shell command '%s'", cmd->shell);
-        break;
-    default:
-        /* parent process */
-        break;
+        case -1:
+            err("Unable to fork, command won't be executed.");
+            break;
+        case 0:
+            /* child process */
+            if(setuid(cmd->uid) < 0){
+                err("Commands can't be executed as user '%i'.", cmd->uid);
+            }
+            execl(cmd->shell, cmd->shell, "-c", cmd->cmd, NULL);
+            
+            /* If everything goes fine, it will never arrive here */
+            err("Unable to execute the shell command '%s'", cmd->shell);
+            break;
+        default:
+            /* parent process */
+            break;
     }
     
 }
 
-void trans_notice_event(Transition *trans){
-    trans->noticedevents++;
-    if(trans->noticedevents++ < trans->eventnotices)
-        return;
+bool trans_notice_event(Transition *trans){
+    if(++trans->noticedevents < trans->eventnotices)
+        return false;
     /* If all the required events happened then we must execute the action */
     switch(trans->at){
         case CMD_ACTION:
             cmd_execute((CmdAction *) trans->typedaction);
             break;
     }
+    trans->noticedevents = 0;
+    return true;
 }
 
 void trans_add_requisite(Transition *trans, EventNotice *en){
-    reactor_slist_prepend(trans->enrequisites, en);
+    trans->enrequisites = reactor_slist_prepend(trans->enrequisites, en);
     trans->eventnotices++;
 }
 
