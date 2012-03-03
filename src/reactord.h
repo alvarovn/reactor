@@ -21,11 +21,55 @@
 #ifndef REACTOR_H_INCLUDED
 #define REACTOR_H_INCLUDED
 
+#include <sys/types.h>
+
+#define SOCK_PATH "/tmp/rcrtlsock"
+
+typedef struct _addtransmsg{
+    char *action;
+    char **enids; 
+    char *to; 
+    char *from;
+}AddTransMsg;
+
+typedef struct _reactoreventmsg{
+    char *eid;
+    int uid;
+    /* In the future this field may contain more information about the font 
+     * than the pid.
+     */ 
+    pid_t fontpid;  
+} ReactorEventMsg;
+
+/* cntrl.c */
+typedef enum _cntrlmsgtype{
+    REACTOR_EVENT,
+    ADD_TRANSITION
+}CntrlMsgType;
+
+typedef struct _cntrlheader{
+    int size;
+    CntrlMsgType cmt;
+}CntrlHeader;
+
+typedef struct _cntrlmsg{
+    CntrlMsgType cmt;
+    void *cm;
+}CntrlMsg;
+
+typedef struct _cntrl Cntrl;
+
+CntrlMsg* cntrl_get_msg(Cntrl *cntrl);
+void cntrl_free(Cntrl *cntrl);
+Cntrl* cntrl_new();
+int cntrl_listen(Cntrl* cntrl);
+int cntrl_get_fd(Cntrl *cntrl);
+void cntrl_atm_free(AddTransMsg *atm);
+void cntrl_rem_free(ReactorEventMsg *rem);
+
 /* user.c */
-
-typedef struct _User User;
-
-struct _User{
+typedef struct _user User;
+struct _user{
     char *name;
     User *next;
 };

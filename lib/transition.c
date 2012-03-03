@@ -45,16 +45,12 @@ struct _cmdaction{
 Transition* trans_new(State *dest){
     Transition *trans = NULL;
     
-    if((trans = (Transition *) malloc(sizeof(Transition))) == NULL){
+    if((trans = (Transition *) calloc(1, sizeof(Transition))) == NULL){
         dbg_e("Error on malloc() the new transition'", NULL);
         goto end;
     }
-    trans->enrequisites = NULL;
-    trans->noticedevents = 0;
-    trans->eventnotices = 0;
     trans->dest = dest;
-    trans->at = CMD_ACTION;
-    trans->typedaction = NULL;
+//     trans->at = CMD_ACTION;
 end:
     return trans;
 }
@@ -65,7 +61,7 @@ bool trans_set_cmd_action(Transition *trans, const char *cmd, const char *shell,
     CmdAction *cmdactn = NULL;
     bool success = true;
     
-    if((cmdactn = (CmdAction *) malloc(sizeof(CmdAction))) == NULL){
+    if((cmdactn = (CmdAction *) calloc(1, sizeof(CmdAction))) == NULL){
         dbg_e("Error on malloc() the new command action'", NULL);
         success = false;
         goto end;

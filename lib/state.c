@@ -35,14 +35,12 @@ struct _state {
 State* state_new(const char* id){
     State *ste = NULL;
 
-    if ((ste = (State *) malloc(sizeof(State))) == NULL) {
+    if ((ste = (State *) calloc(1, sizeof(State))) == NULL) {
         dbg_e("Error on malloc() the state '%s'", id);
         goto end;
     }
 
     ste->id = strdup(id);
-    ste->transitions = NULL;
-    ste->ntranspointers = 0;
 end:
     return ste;
 }

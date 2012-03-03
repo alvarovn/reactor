@@ -24,6 +24,7 @@ AC_PROG_MAKE_SET
 # Checks for libraries.
 
 PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.22.0])
+PKG_CHECK_MODULES(LIBEVENT, [libevent >= 2.0.10])
 
 # Checks for header files.
 

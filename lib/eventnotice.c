@@ -33,14 +33,12 @@ struct _eventnotice {
 EventNotice* en_new(const char* id) {
     EventNotice *en = NULL;
 
-    if ((en = (EventNotice *) malloc(sizeof(EventNotice))) == NULL) {
+    if ((en = (EventNotice *) calloc(1, sizeof(EventNotice))) == NULL) {
         dbg_e("Error on malloc() the event notice '%s'", id);
         goto end;
     }
 
     en->id = strdup(id);
-    en->currtrans = NULL;
-    en->ntranspointers = 0;
 end:
     return en;
 }

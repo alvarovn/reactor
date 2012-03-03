@@ -23,7 +23,6 @@
 #include <grp.h>
 
 #include "reactor.h"
-
 #include "reactord.h"
 
 void free_users(User* u){
@@ -41,11 +40,10 @@ void free_users(User* u){
 static User* load_user(const char* uname){
     User *u = NULL;
     
-    if((u = (User *) malloc(sizeof(User))) == NULL){
+    if((u = (User *) calloc(1, sizeof(User))) == NULL){
         dbg_e("Error on malloc() the user '%s'", uname);
         goto end;
     }
-    u->next = NULL;
     if((u->name = strdup(uname)) == NULL){
         dbg_e("Error copying the user name '%s'", uname);
         free_users(u);
