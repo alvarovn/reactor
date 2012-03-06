@@ -23,7 +23,9 @@
 
 #include <sys/types.h>
 
-#define SOCK_PATH "/tmp/rcrtlsock"
+/* TODO Socket must be changed to a secure path */
+
+#define SOCK_PATH "/tmp/rctlsock"
 
 typedef struct _addtransmsg{
     char *action;
@@ -43,8 +45,12 @@ typedef struct _reactoreventmsg{
 
 /* cntrl.c */
 typedef enum _cntrlmsgtype{
+    /* to server */
     REACTOR_EVENT,
-    ADD_TRANSITION
+    ADD_TRANSITION,
+    /* from server */
+    ACK,
+    AT_NOFROM
 }CntrlMsgType;
 
 typedef struct _cntrlheader{
@@ -59,13 +65,16 @@ typedef struct _cntrlmsg{
 
 typedef struct _cntrl Cntrl;
 
-CntrlMsg* cntrl_get_msg(Cntrl *cntrl);
+int cntrl_send_msg(Cntrl* cntrl, const CntrlMsg* msg);
+void cntrl_peer_close(Cntrl *cntrl);
+CntrlMsg* cntrl_receive_msg(Cntrl *cntrl);
 void cntrl_free(Cntrl *cntrl);
-Cntrl* cntrl_new();
+Cntrl* cntrl_new(bool server);
 int cntrl_listen(Cntrl* cntrl);
 int cntrl_get_fd(Cntrl *cntrl);
 void cntrl_atm_free(AddTransMsg *atm);
 void cntrl_rem_free(ReactorEventMsg *rem);
+int cntrl_connect(Cntrl *cntrl);
 
 /* user.c */
 typedef struct _user User;

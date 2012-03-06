@@ -72,30 +72,33 @@ static Transition* add_init_trans(AddTransMsg *msg, bool init){
 static Transition* add_trans_handler(AddTransMsg *msg){
     Transition *trans = NULL;
     State *stt;
-    if(msg->from == NULL) return add_init_trans(msg, true);
+    if(*(msg->from) == NULL || msg->from == NULL) return add_init_trans(msg, true);
         
     stt = reactor_hash_table_lookup(states, msg->from);
     if(stt == NULL){
         warn("Origin state '%s' must exist and it doesn't. The transition won't be added.", msg->from);
-           goto error;
+           goto end;
     }
     
     trans = add_init_trans(msg, false);
     state_add_trans(stt, trans);
     info("New transition from state '%s' to state '%s'.", msg->from, msg->to);
-error:
+end:
     return trans;
 }
 
-static void reactor_event_handler(const ReactorEventMsg *msg){
+static int reactor_event_handler(const ReactorEventMsg *msg){
+    int error;
     EventNotice *en;
     const RSList *currtrans;
     RSList *ftrans = NULL;
-        
+    
+    error = 0;
     en = (EventNotice *) reactor_hash_table_lookup(eventnotices, msg->eid);
     if(en == NULL) {
         info("Unknown event '%s' happened.", msg->eid);
-        return;
+        error = -1;
+        return error;
     }
 
     currtrans = en_get_currtrans(en);
@@ -124,24 +127,34 @@ static void reactor_event_handler(const ReactorEventMsg *msg){
                 en_add_curr_trans((EventNotice *)rsl2->data, (Transition *)rsl->data);
             }
     }
-    
+end:
+    return error;
 }
 
 /* libevent control socket callback */
 
 static void receive_cntrl_msg(int fd, short ev, void *arg){
+    CntrlMsg response;
+    CntrlMsg *msg;
+    response.cmt = ACK;
+    response.cm = NULL;
     cntrl_listen(cntrl);
-    CntrlMsg *msg = cntrl_get_msg(cntrl);
+    msg = cntrl_receive_msg(cntrl);
     switch(msg->cmt){
         case REACTOR_EVENT:
             reactor_event_handler((ReactorEventMsg *) msg->cm);
+            cntrl_send_msg(cntrl, &response);
             cntrl_rem_free(msg->cm);
             break;
         case ADD_TRANSITION:
-            add_trans_handler((AddTransMsg *) msg->cm);
+            if(add_trans_handler((AddTransMsg *) msg->cm) == NULL){
+                response.cm = AT_NOFROM;
+            }
+            cntrl_send_msg(cntrl, &response);
             cntrl_atm_free(msg->cm);
             break;
     }
+    cntrl_peer_close(cntrl);
     free(msg);
 }
 
@@ -208,10 +221,13 @@ int main(int argc, char *argv[]) {
     
     /* sockets setup and poll */
     event_init();
-    if((cntrl = cntrl_new()) == NULL){
+    if((cntrl = cntrl_new(true)) == NULL){
         err("Unable to create the control socket and bind it to '%s'. Probably a permissions issue.", SOCK_PATH);
+        goto exit;
     }
-    cntrl_listen(cntrl);
+    if(cntrl_listen(cntrl) == -1) {
+        goto exit;
+    }
     event_set(&ev, cntrl_get_fd(cntrl), EV_READ | EV_PERSIST, &receive_cntrl_msg, NULL);
     event_add(&ev, NULL);
     event_dispatch();
