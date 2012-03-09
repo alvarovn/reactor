@@ -1,135 +1,306 @@
-\documentclass[a4paper,11pt]{scrartcl}
+\documentclass[a4paper,11pt]{article}
 \usepackage[utf8x]{inputenc}
 \usepackage{fullpage}
-
-%opening
-\title{Unix Systems Event Manager}
-\author{Álvaro Villalba Navarro\\
-  Director: Juan José Costa Prats
+\usepackage{graphicx}
+\usepackage[small]{caption}
+\usepackage{multicol}
+% \usepackage{wrapfig}
+\usepackage{listings}
+\lstset{ 
+  basicstyle=\footnotesize,  
 }
+%opening
+\title{Unix Systems Event Manager \\ Initial report}
+\author{Álvaro Villalba Navarro \\ Director: Juan José Costa Prats}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-In this initial report we will explain the problem about abstract events 
-scheduling, handling and reaction in Unix systems that this final project 
-intends to solve and describe the chosen solution. As the nature of the final 
-project is time-limited we won't cover the implementation of the whole solution 
-but the most important functionalities, so the goals of this project will be 
-stated explicitly.\\
-Furthermore this document will state where we are inside the time-line of the 
-project, which is the current approach to the solution and how much work has to 
-be done until the end of the given time. In a nutshell, which are the goals 
-that have been achieved and which need to be achieved yet. This will be done by
-defining a planning divided into explained tasks with assigned deadlines, a
-final statement about the current work being done and a forecast about the
-future of the project.\\
-The reason for this document to be written in English, which is certainly not 
-my mother tongue, is the Free Software nature of the project. This decision is 
-expected to help its diffusion.
+In this initial report we will explain the problems of general purpose job scheduling and
+abstract events handling in Unix systems, and describe one solution implemented through this final project.
+It's important to understand that this is not 
+only an engineering final project, but also a personal project. As the nature of the final 
+project is time-limited we won't cover the implementation of the whole solution but the most important 
+functionalities, so the goals of this project will be stated explicitly.\\
+Furthermore this document will state which are the goals that have been achieved and which need to be 
+achieved yet. This will be done by defining a planning divided into tasks with assigned deadlines, a
+final explanation about the work being done and a forecast about the future of the project.\\
+The reason for this document to be written in English, which is not my native language, is that the project 
+is under the free software terms. This decision is expected to help its diffusion and maybe catch the interest
+of somebody.\\
+% TODO Explain that it is not only a final project, but a personal project too.
 \end{abstract}
+% \newpage
+% \tableofcontents
+% \newpage
+\section{Introduction}
+In Unix-like operating systems there is a service which exists in almost every 
+distribution or version and it's treated as an standard. This service is 
+\emph{cron}, which according to Wikipedia:
+\begin{quote}
+  \emph{
+    ``cron is a time-based job scheduler in Unix-like computer operating systems. cron 
+    enables users to schedule jobs (commands or shell scripts) to run periodically at 
+    certain times or dates. It is commonly used to automate system maintenance or 
+    administration, though its general-purpose nature means that it can be used for other 
+    purposes, such as connecting to the Internet and downloading email.''
+  }
+\end{quote}
+It is a job scheduler\footnote{Should not be confused with process scheduling, which is 
+the assignment of currently running processes to CPUs by the operating system.}, 
+which means that it is a service in charge of running background 
+executions. Job schedulers must be based on something to decide when is the right moment
+to run a job. Most of job schedulers are workload-based, so they schedule their jobs by
+taking into account the available resources, to run them when the computer is idle.\\
+However, as we have seen on the Wikipedia article, cron is time-based, so it will run its 
+jobs on defined instants.\\
+There are more services with job-scheduling capabilities based on other kinds of events,
+like \emph{udev} which is a device manager that can run shell commands when events such as a 'new
+device connection' occur. Or \emph{syslog}, that can also run shell commands when it receives a
+log message from an application.
+\subsection{Problem}
+This project intends to solve the problem of scheduling jobs using an abstract concept of \emph{event}, so we 
+are not that much limited by the nature of the events that trigger the jobs, such as time or workload.\\
+That alone is not a problem to solve as we have services for each kind of events.
+\begin{list}{-}{But what we want is a service that:}
+  \item Can have multiple events as a requirement for a job.
+  \item Adds the ability of detecting new kinds of events to the system.
+  \item Runs a state machine.
+  \item Propagates events through IP.
+\end{list}
+The first point means that we want our service to notice various events of different kinds 
+to execute a single job. It should also permit logical operations between those event notices
+as condition to execute a job, like '\emph{if noticed event\_x or event\_y then run z}'.\\
+The second point refers to the fact that as we said before, Unix-like systems have several
+job schedulers for various kinds of events, generally each for one kind. But as we want to
+be able to combine this kinds of events, it's also desirable to have more than we currently 
+have. For example geolocation, system sensors, weather forecast or file monitoring events 
+could be quite useful.\\
+If we receive the event ``10:00AM'' and later the event ``11:00AM'', we can define the period of time 
+``between 10AM and 11AM''. This period is a state, and we would like to execute jobs only in this state every 
+time we receive some random event, but not when we receive it at 12AM. This is simply defining a 
+\emph{state machine}, and it's explained in depth in the following section.\\
+The last entry of the list means that a local service could propagate an event to the same service in another
+computer in order to inform of that event and usually running a job there. 
+\subsubsection{Example}
+\begin{figure}
+  \centering
+    \includegraphics[height=16mm]{img/cronsm1}
+  \caption{cron state machine example.}
+  \label{fig:cronsm1}
+\end{figure}
+\begin{figure}
+  \centering
+    \includegraphics[height=40mm]{img/reactorsm1}
+  \caption{Proposed service state machine example.}
+  \label{fig:reactorsm1}
+\end{figure}
+Cron is a simple and known enough example of a job scheduler, so we will
+use it to illustrate what we have and what we want. If we see every entry of a 
+crontab as a state machine we would have something like shown on \emph{figure \ref{fig:cronsm1}}.
+As we can see there is only one state (initial) and a single \emph{transition}. Over the transition we have an
+event and a job separated by the character \emph{/}. In a state machine a job is called \emph{action}, so that is
+the way we will call them from now on.\\
+This is what cron can do, but what we actually would like to have on our service is something like 
+\emph{figure \ref{fig:reactorsm1}}, where we can see multiple states, events of different kinds,
+and transitions. Imagine for this example that we have a system administrator working in a office with his own 
+laptop. This state machine detects when he is working by waiting for a geolocation event that sites
+the device at the office, \emph{and} two time events\footnote{It could be in fact just one event as in 
+\emph{figure \ref{fig:cronsm1}}, but this way is more comprehensive.} that define the beginning
+of the working day. What if we start the service after the time the event would be received? A solution 
+is discussed in section \ref{sec:ctl}.\\
+The first action is a script that would change the current KDE\footnote{KDE is a popular software compilation for 
+Linux operating systems, which include a desktop environment.} Activity\footnote{A KDE Activity is a desktop 
+environment configuration, which includes the wallpaper, desktop widgets and applications running.} to one 
+configured for work, with a sober and relaxing wallpaper, and the applications needed to do his job.\\
+Once he is working, he will be notified every time the server he is in charge of logs an error message. When he
+accept the notification it will open the working directory of the server. As this event has been generated on the 
+server, this is a remote event received through IP.\\
+To detect the end of our working day and close the 'work' Activity the service must detect that he
+is no more in a working day (time event) \emph{or} that he is out of the office (geolocation).\\
+A remark about this state machine is that it has a final state, so it won't start again until the service is 
+restarted. This behaviour can be easily changed to the cron's behaviour by removing the final state and sending the 
+last two transitions to the initial state.
+% \lstinputlisting[language=sh,label=list:activity1,caption={work\_kde\_activity.sh}]{code/work_kde_activity.sh}
+% \lstinputlisting[language=sh,label=list:notify1,caption={notify.sh}]{code/notify.sh}
+% \lstinputlisting[language=sh,label=list:sftp1,caption={server\_sftp.sh}]{code/server_sftp.sh}
+% \lstinputlisting[language=sh,label=list:activity2,caption={stop\_work\_activity.sh}]{code/stop_work_activity.sh}
+\subsection{Solution}
+\begin{figure}
+  \centering
+    \includegraphics[height=100mm]{img/reactordiagram}
+  \caption{Diagram of reactor.}
+  \label{fig:reactordia1}
+\end{figure}
+In \emph{figure \ref{fig:reactordia1}} we have a sketch of the solution we propose to the previously explained 
+problem. The project is, by now, globally called \emph{reactor}. reactor is formed by four principal components:
+\subsubsection{Daemon}
+\emph{reactord} in \emph{figure \ref{fig:reactordia1}}, is the main service that would receive events from the 
+\emph{event sources}. It also has the state machine structure specified by some editable files
+\tiny(\emph{state tabs}) \normalsize similar to crontabs or the udev rules files.
+Transitions can also be added by the user during the runtime of the service using the command line 
+program \tiny(\emph{section \ref{sec:ctl}}) \normalsize. 
+This state machine is defined by transitions with a list of event notices identifications, an action, 
+and '\emph{from}' and '\emph{to}' state identifications. If 'from' identification is empty, then it's the initial 
+state. If 'to' identification is not the 'from' identification of any other transition, then it is a final state.\\
+reactord could also act as a \emph{remote event source} sending events through a network to a remote reactord. 
+Those events are the events received by local sources that are stated on the \emph{propagation rules files} 
+to be resend to an IP address. We could have a system to send propagation rules of the remote events we are 
+interested to the remote reactord, although this won't be part of the final project.
+\subsubsection{Workers}
+\emph{Workers}\footnote{A worker is a child process that runs in parallel with its father doing some specific job.} 
+or \emph{event triggers} in the sketch, are one kind of local event sources. Their goal is to generate events of 
+kinds which we don't have any job scheduler, so reactord must provide a good interface to make them easy to 
+develop.\\
+For doing that they will act as an external job scheduler would, with its \emph{event rules}
+files to know when to trigger an event, but with the advantage of being completely integrated with reactord.\\
+We mentioned in the example the problem that if an event that defines the beginning of a state happens before the 
+service started, we lose that information and reactord won't know we actually aren't in the initial state. 
+The daemon workers gives us a solution: We send to the workers the events we are currently waiting for and which 
+the workers are in charge. The workers will check if the last time those events happened was after the last time
+next states leaving events happened. If that's true those events are triggered and we enter the correct state.
+That's something other event sources can't do, because they are not integrated with the daemon.
+\subsubsection{Command line program}
+\label{sec:ctl}
+\emph{reactorctl} in the sketch, is the typical administration or control application for the daemon. It has two 
+differenced functionalities: sending administration commands and manually triggering events to the daemon.\\
+The administration commands would be adding transitions to the state machine without saving them on disk, ask 
+the workers to trigger the past events to enter in valid current states and get the state machines in a 
+interpretable format\footnote{Those formats could be DOT, GML or TGF.}.\\
+The manually triggering events functionality is useful not only for debugging purpose, but also because it gives 
+the ability to use existent job schedulers for sending events to reactord, so we don't have to reinvent the wheel.
+Far from being part of the final project, it could be able to set the rules of well known job schedulers to send 
+events to reactord without having to edit manually the rules files of each one.
+\subsubsection{Library}
+In the diagram we can see one last component which is a random application sending events to reactord. It 
+should be done by sharing the main reactor functions in a shared library, giving access to any application 
+to easily sending events or adding transitions. This is intended to help to reduce the number of daemons on 
+the system loaded by applications that are just waiting for something to occur to show simple alerts or 
+alarms when the application is closed.
 
-\newpage
-\tableofcontents
-\newpage
-
+% TODO Explain why Unix-like/Linux OS.
+  
 \section{Planning}
-Here we will show the planning we intend to follow in order to `have things 
-done` in time. It's mainly a list of tasks to perform ordered from most to less 
-priority and assigned deadlines to sets of those tasks (or iterations):\\*
-\\
+That is the planning to follow in order to finish the project in time. 
+Here is also where the goals of the final project are clearly 
+stated. It's mainly a list of tasks to perform ordered from most to less 
+priority, and assigned deadlines to sets of those tasks:
 % TODO Already done tasks
+\small
+\begin{multicols}{2}
+\ \\
+\begin{list}{-}{January 26th, 2012}
+  \item Design of the project.
+\end{list}
+\begin{list}{-}{February 2nd, 2012}
+  \item Makefile.am and configure.ac.
+  \item Log functions.
+  \item reactor users check.
+\end{list}
 \begin{list}{-}{February 16th, 2012}
   \item Main data structure of the daemon done and working.
-  \item Wrappers to all the third party data structures (mainly glib).
-    \subitem As it's expected to improve the efficiency of the software in the 
-	      future, we want to wrap all the declarations of the third 
-	      party basic data structures we use, so when we re-implement them
-	      the changes to any other non-related code will be minimal.
+%   \item Wrappers to all the third party data structures (mainly glib).
+%     \subitem As it's expected to improve the efficiency of the software in the 
+% 	      future, we want to wrap all the declarations of the third 
+% 	      party basic data structures we use, so when we re-implement them
+% 	      the changes to any other non-related code will be minimal.
   \item Daemon socket ready to receive events from other processes.
-    \subitem The poll management will be performed by 'libevent'.
+%     \subitem The poll management will be performed by 'libevent'.
   \item Execute shell commands functionality.
   \item Dummy first version of control program.
-    \subitem Its purpose is to send events, so we can test the daemon.
+%     \subitem Its purpose is to send events, so we can test the daemon.
 \end{list}
-After this deadline what we have are the very most basic and principal 
-functionalities of the project. This is, a daemon with some states machines 
-defined in it that receives event messages for those states machines from a 
-socket and executes shell commands if assigned to the transitions.
-There's no way to read the states machines from anywhere yet so it has some test 
-hard-coded state machines.\\*
-\\
+% TODO Move this.
+% After this deadline what we have are the very most basic and principal 
+% functionalities of the project. This is, a daemon with some states machines 
+% defined in it that receives event messages for those states machines from a 
+% socket and executes shell commands if assigned to the transitions.
+% There's no way to read the states machines from anywhere yet so it has some test 
+% hard-coded state machines.\\*
 \begin{list}{-}{February 29th, 2012}
-  \item Transition tabs. % TODO State tabs? State machines definition files?
-    \subitem Define syntax.
-    \subitem Parser function.
-    \subitem Saver function.
-    \subitem Define files location by user.
+  \item \emph{State tabs}. % TODO State tabs? State machines definition files?
+%     \subitem Define syntax.
+%     \subitem Parser function.
+%     \subitem Saver function.
+%     \subitem Define files location by user.
 \end{list}
-Now we have implemented one of the lacking features of the basic version with 
-more priority.\\*
-\\
+% Now we have implemented one of the lacking features of the basic version with 
+% more priority.
 \begin{list}{-}{March 9th, 2012}
-  \item Control program with the following functionalities:
-    \subitem Add transition.
-    \subitem Generate event. % TODO Generate?
-    \subitem Return all the states machines in a known graph syntax.
-      \subsubitem f.e. DOT.
+  \item \emph{Control program with basic functionalities}.
+%     \subitem Add transition.
+%     \subitem Manual event trigger.
+%     \subitem Return all the states machines in a known graph syntax.
+%       \subsubitem f.e. DOT.
+  \item Delivery this report.
 \end{list}
-With this step done, we have the first basic but functional version of the 
-project.\\*
+% With this step done, we have the first basic but functional version of the 
+% project.
 % TODO This must be extended before the delivery of this report.
-\\
 \begin{list}{-}{March 16th, 2012}
   \item Shared library.
-    \subitem This is expected to be easy and fast to finish, because it has 
-	      been already implemented for the control program.\\
-	      'syslog.h' and 'libudev.h' style.
-  \item Internal events. % TODO Is this really the best place to put that task?
-    \subitem Implement a port to manage internal daemon events.
+%     \subitem This is expected to be easy and fast to finish, because it has 
+% 	      been already implemented for the control program.\\
+% 	      'syslog.h' and 'libudev.h' style.
+%   \item Internal events. % TODO Is this really the best place to put that task?
+%     \subitem Implement a port to manage internal daemon events.
 \end{list}
 % TODO Do we have something to say here?
 \begin{list}{-}{March 30th, 2012}
   \item Propagation rules data structure.
 % TODO This must be updated when the decision is taken.
-    \subitem This must be an update of the main data structure to also check
-	      propagation rules or instead, creating a new parallel data 
-	      structure.
+%     \subitem This must be an update of the main data structure to also check
+% 	      propagation rules or instead, creating a new parallel data 
+% 	      structure.
   \item Propagation rules files.
-    \subitem Define syntax.
-    \subitem Parser function.
-    \subitem Saver function.
-    \subitem Define files location by user.
+%     \subitem Define syntax.
+%     \subitem Parser function.
+%     \subitem Saver function.
+%     \subitem Define files location by user.
 \end{list}
 % TODO Do we have something to say here?
 \begin{list}{-}{April 13th, 2012}
-  \item Daemon socket ready to receive TCP/IP event messages.
-  \item Plugin schedulers interface.
-    \subitem This is the main part of the project which will make use of 
-	      internal events by now.
+  \item Daemon socket ready to send and receive IP event messages.
+  \item Plugin workers interface.
+%     \subitem This is the main part of the project which will make use of 
+% 	      internal events by now.
 \end{list}
 % TODO Do we have something to say here?
 \begin{list}{-}{April 27th, 2012}
   \item Test plugin.
-    \subitem As much useful as time we have left to implement it.
+%     \subitem As much useful as time we have left to implement it.
   \item Current state storing.
-    \subitem Define syntax.
-    \subitem Parser function.
-    \subitem Saver function.
-    \subitem Define files location by user.
-    \subitem Add the option to the 'transition tabs' syntax.
-    \subitem Add the option to the control program.
-  \item Action finalizing internal events.
-    \subitem Finalize, error and success.
+%     \subitem Define syntax.
+%     \subitem Parser function.
+%     \subitem Saver function.
+%     \subitem Define files location by user.
+%     \subitem Add the option to the 'transition tabs' syntax.
+%     \subitem Add the option to the control program.
+  \item Trigger events on action finalization.
+%     \subitem Finalize, error and success.
   \item Trigger currently valid events.
 \end{list}
-As we can see this set of tasks is a lot more dense than the previous. That's
-because we are taking in account that maybe we can't develop all the features
-because a lack of time, but again, maybe we don't have that lack of time and 
-the project finishes with all those features in it. That's why the tasks are 
-ordered by priority.\\
-The minimum desired last task is the test plugin.
-
+% As we can see this set of tasks is a lot more dense than the previous. That's
+% because we are taking in account that maybe we can't develop all the features
+% because a lack of time, but again, maybe we don't have that lack of time and 
+% the project finishes with all those features in it. That's why the tasks are 
+% ordered by priority.\\
+% The minimum desired last task is the test plugin.
+\end{multicols}
+\normalsize
+Right now we are at at March 9th, 2012 deadline and we haven't achieved all the goals
+that we anticipated, even though we have most of the tasks done. The task that needs
+more work to be done and was foreseen to be already done is the state tabs task, that
+includes a syntax definition (already done), files destination (already done), parser 
+and builder.\\
+reactorctl has the basic functionalities done but it lacks a good argument entry for the
+user.\\
+Recently we noticed a malfunction on the state machine structure, and the socket 
+communication between reactorctl and reactord can be improved.\\
+\\
+Because of the experience in this project until now, we believe that this planning may be
+altered. That's why we consider the last deadline tasks as optional and they will be done if 
+there is time left.
 
 \end{document}
