@@ -172,9 +172,11 @@ bool trans_notice_event(Transition *trans);
 void trans_add_requisite(Transition *trans, EventNotice *en);
 const State* trans_get_dest(Transition *trans);
 const RSList* trans_get_enrequisites(Transition *trans);
-void trans_clist_merge(Transition* clist1, Transition* clist2);
+Transition* trans_clist_merge(Transition* clist1, Transition* clist2);
 Transition* trans_clist_remove_link(Transition* trans);
 void trans_clist_free_full(Transition* trans);
 Transition* trans_clist_next(Transition *clist);
+void trans_set_active(Transition *trans, bool active);
+bool trans_is_active(Transition *trans);
 
 #endif

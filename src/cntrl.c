@@ -132,7 +132,7 @@ static char* cntrl_serialize_atm(const CntrlMsg *msg){
     size += strlen(atm->action)+1;
     size += strlen(atm->to)+1;
     size += strlen(atm->from)+1;
-    if((sermsg = (char *) calloc(1, size + sizeof(header))) == NULL){
+    if((sermsg = (char *) calloc(1, size + sizeof(CntrlHeader))) == NULL){
         dbg_e("Error on malloc() the serialized message.", NULL);
         goto end;
     }
@@ -193,11 +193,12 @@ end:
 }
 
 CntrlMsg* cntrl_receive_msg(Cntrl *cntrl){
-    int *sfd;
+    int *sfd, readcount;
     CntrlMsg * cm = NULL;
     CntrlHeader ch;
     char *msg;
     
+    readcount = 0;
     if(cntrl == NULL){
         dbg("Trying to receive a message from a 'NULL' cntrl", NULL);
         goto end;
@@ -219,7 +220,12 @@ CntrlMsg* cntrl_receive_msg(Cntrl *cntrl){
         free(msg);
         goto malloc_error;
     }
-    read(cntrl->psfd, msg, ch.size);
+    if((readcount = read(cntrl->psfd, msg, ch.size)) < ch.size){
+	free(msg);
+	free(cm);
+	cm = NULL;
+	goto end;
+    }
     /* TODO check credentials */
     cm->cmt = ch.cmt;
     /* Call deserializers if needed */

@@ -41,7 +41,7 @@ Cntrl *cntrl;
 static CntrlMsgType add_trans_handler(AddTransMsg *msg){
     Transition *trans, *fsminitial = NULL;
     State *from, *to = NULL;
-    EventNotice *en;
+    EventNotice *en = NULL;
     bool init;
     CntrlMsgType cmt = ACK;
     
@@ -90,7 +90,8 @@ static CntrlMsgType add_trans_handler(AddTransMsg *msg){
         trans_add_requisite(trans, en);
         en_add_transpointer(en);
         /* As it is an initial transition it should also be a current transition */
-        if(init) en_add_curr_trans(en, trans);
+        if(init)en_add_curr_trans(en, trans);
+
     }
     if(init) info("New initial transition to state '%s'.", msg->to);
     else{
@@ -105,8 +106,9 @@ static int reactor_event_handler(const ReactorEventMsg *msg){
     int error;
     EventNotice *en;
     const RSList *currtrans;
-    Transition *ftrans = NULL;
+    RSList *ftrans = NULL;
     Transition *transaux = NULL;
+    Transition *transaux2 = NULL;
     
     error = 0;
     en = (EventNotice *) reactor_hash_table_lookup(eventnotices, msg->eid);
@@ -121,27 +123,29 @@ static int reactor_event_handler(const ReactorEventMsg *msg){
     RSList *rsl;
     for (rsl = currtrans; rsl != NULL; rsl = reactor_slist_next(rsl)){
         transaux = (Transition *) rsl->data;
-        if(trans_notice_event(transaux)){
+        if(trans_is_active(transaux) && trans_notice_event(transaux)){
 	    /* clear currtrans from the current state */
 	    trans_clist_clear_curr_trans(transaux);
             /* forward on the state machine */
-            for(Transition *tcl2 = state_get_trans( trans_get_dest(transaux) );
-                tcl2 != NULL;
-                tcl2 = trans_clist_next(tcl2)){
-                    trans_clist_merge(ftrans, tcl2);
-            }
+	    transaux2 = state_get_trans(trans_get_dest(transaux));
+	    if(transaux2 != NULL){
+		Transition *tcl2 = transaux2;
+		do{
+		    ftrans = reactor_slist_prepend(ftrans, (void *)tcl2);
+		    tcl2 = trans_clist_next(tcl2);
+		}while(transaux2 != tcl2);
+	    }
         }
     }
     en_clear_curr_trans(en);
     
     /* Insert into eventnotices the new current valid transitions */
     
-    for (Transition *tcl = ftrans; tcl != NULL; tcl = trans_clist_next(tcl)){
-        
-        for(RSList *rsl2 = trans_get_enrequisites(tcl);
+    for (RSList *trsl = ftrans; trsl != NULL; trsl = reactor_slist_next(trsl)){
+        for(RSList *rsl2 = trans_get_enrequisites(trsl);
             rsl2 != NULL;
             rsl2 = reactor_slist_next(rsl2)){
-                en_add_curr_trans((EventNotice *)rsl2->data, tcl);
+                en_add_curr_trans((EventNotice *)rsl2->data, (Transition *)trsl->data);
             }
     }
 end:
@@ -156,7 +160,10 @@ static void receive_cntrl_msg(int fd, short ev, void *arg){
     response.cmt = ACK;
     response.cm = NULL;
     cntrl_listen(cntrl);
-    msg = cntrl_receive_msg(cntrl);
+    if((msg = cntrl_receive_msg(cntrl)) == NULL){
+      	err("Error in the communication with 'reactorctl'");
+	goto end;
+    }
     switch(msg->cmt){
         case REACTOR_EVENT:
             reactor_event_handler((ReactorEventMsg *) msg->cm);
@@ -169,6 +176,7 @@ static void receive_cntrl_msg(int fd, short ev, void *arg){
             cntrl_atm_free(msg->cm);
             break;
     }
+end:
     cntrl_peer_close(cntrl);
     free(msg);
 }

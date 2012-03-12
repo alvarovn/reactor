@@ -62,7 +62,7 @@ bool state_free(State *ste){
 }
 
 void state_add_trans(State *ste, Transition *trans){
-    trans_clist_merge(ste->transitions, trans);
+    ste->transitions = trans_clist_merge(ste->transitions, trans);
 }
 
 const char* state_get_id(State *ste){

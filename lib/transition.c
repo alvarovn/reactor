@@ -32,6 +32,7 @@ struct _transition{
     State* dest;
     ActionTypes at;
     void *typedaction;
+    bool active;
     /* Transition circular list */
     Transition *clistnext;
     Transition *clistprev;
@@ -54,19 +55,33 @@ Transition* trans_new(State *dest){
     trans->dest = dest;
     trans->clistnext = trans;
     trans->clistprev = trans;
+    trans->active = false;
 //     trans->at = CMD_ACTION;
 end:
     return trans;
 }
 
-void trans_clist_merge(Transition* clist1, Transition* clist2){
+bool trans_is_active(Transition *trans){
+    return trans->active;
+}	
+
+void trans_set_active(Transition *trans, bool active){
+    trans->active = active;
+}
+
+Transition* trans_clist_merge(Transition* clist1, Transition* clist2){
     Transition *aux, aux2;
-    
+    if(clist1 == NULL){
+	clist1 = clist2;
+	goto end;
+    }
     aux = clist1->clistnext;
     aux->clistprev = clist2;
     clist1->clistnext = clist2->clistnext;
     clist2->clistnext->clistprev = clist1;
     clist2->clistnext = aux;
+end:
+    return clist1;
 }
 
 Transition* trans_clist_remove_link(Transition* trans){
@@ -102,6 +117,7 @@ Transition* trans_clist_clear_curr_trans(Transition *clist){
     
     for(aux= clist;clist->clistnext != aux; clist = trans_clist_next(clist)){
 	clist->noticedevents = 0;
+	clist->active = false;
 	reactor_slist_foreach(clist->enrequisites, en_remove_one_curr_trans, clist);
     }
 }
