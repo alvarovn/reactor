@@ -29,12 +29,10 @@ Cntrl *cntrl;
 /* By now this program only executes tests */
 int main(int argc, char *argv[]) {
     char *ens[] = { "event1",
-                    "event2",
-                    "event3",
-                    "event4",
                     NULL
     };
-    CntrlMsg msgs[7];
+    CntrlMsg msgs[6];
+    CntrlMsgType cmt;
         
     msgs[0].cmt = ADD_TRANSITION;
     msgs[0].cm = (void *)calloc(1, sizeof(AddTransMsg));
@@ -42,34 +40,36 @@ int main(int argc, char *argv[]) {
     ((AddTransMsg *)msgs[0].cm)->enids = ens;
     ((AddTransMsg *)msgs[0].cm)->to = "A";
     ((AddTransMsg *)msgs[0].cm)->from = "";
-    
-    msgs[1].cmt = REACTOR_EVENT;
-    msgs[1].cm = (void *)calloc(1, sizeof(ReactorEventMsg));
-    ((ReactorEventMsg *)msgs[1].cm)->eid = "event1";
-    msgs[2].cmt = REACTOR_EVENT;
-    msgs[2].cm = (void *)calloc(1, sizeof(ReactorEventMsg));
-    ((ReactorEventMsg *)msgs[2].cm)->eid = "event2";
+    msgs[1].cmt = ADD_TRANSITION;
+    msgs[1].cm = (void *)calloc(1, sizeof(AddTransMsg));
+    ((AddTransMsg *)msgs[1].cm)->action =  "echo \"De 'A' a 'B'\" >> /home/lostevil/toma_ya";
+    ((AddTransMsg *)msgs[1].cm)->enids = ens;
+    ((AddTransMsg *)msgs[1].cm)->to = "B";
+    ((AddTransMsg *)msgs[1].cm)->from = "A";
+    msgs[2].cmt = ADD_TRANSITION;
+    msgs[2].cm = (void *)calloc(1, sizeof(AddTransMsg));
+    ((AddTransMsg *)msgs[2].cm)->action =  "echo \"De 'A' a 'C'\" >> /home/lostevil/toma_ya";
+    ((AddTransMsg *)msgs[2].cm)->enids = ens;
+    ((AddTransMsg *)msgs[2].cm)->to = "C";
+    ((AddTransMsg *)msgs[2].cm)->from = "A";
     msgs[3].cmt = REACTOR_EVENT;
     msgs[3].cm = (void *)calloc(1, sizeof(ReactorEventMsg));
-    ((ReactorEventMsg *)msgs[3].cm)->eid = "event3";
+    ((ReactorEventMsg *)msgs[3].cm)->eid = "event1";
     msgs[4].cmt = REACTOR_EVENT;
     msgs[4].cm = (void *)calloc(1, sizeof(ReactorEventMsg));
-    ((ReactorEventMsg *)msgs[4].cm)->eid = "event14";
+    ((ReactorEventMsg *)msgs[4].cm)->eid = "event1";
     msgs[5].cmt = REACTOR_EVENT;
     msgs[5].cm = (void *)calloc(1, sizeof(ReactorEventMsg));
-    ((ReactorEventMsg *)msgs[5].cm)->eid = "event5";
-    msgs[6].cmt = REACTOR_EVENT;
-    msgs[6].cm = (void *)calloc(1, sizeof(ReactorEventMsg));
-    ((ReactorEventMsg *)msgs[6].cm)->eid = "event4";
+    ((ReactorEventMsg *)msgs[5].cm)->eid = "event1";
     
     int i;
-    for(i=0;i<7;i++){
+    for(i=0;i<6;i++){
         cntrl = cntrl_new(false);
         if(cntrl_connect(cntrl) == -1){
             return 1;
         }
-        if((CntrlMsgType)cntrl_send_msg(cntrl, &msgs[i]) != ACK){
-            fprintf(stderr, "NACK!\n");
+        if((cmt = (CntrlMsgType)cntrl_send_msg(cntrl, &msgs[i])) != ACK){
+            fprintf(stderr, "NACK! %i\n", (int)cmt);
         }
         cntrl_peer_close(cntrl);
         cntrl_free(cntrl);

@@ -22,14 +22,13 @@
 
 #include "reactor.h"
 
-/*  For different purpose concept, but almost identical to eventnotice. 
-    Sort of code replication?.
-*/
 
 struct _state {
-    char* id;
-    RSList* transitions;
+    char *id;
+    Transition *transitions;
     unsigned int ntranspointers;
+    /* This pointer acts as identifier of the finite state machine */
+    Transition *fsminitial;
 };
 
 State* state_new(const char* id){
@@ -45,17 +44,25 @@ end:
     return ste;
 }
 
+void state_set_fsminitial(State *ste, Transition *fsminitial){
+    ste->fsminitial= fsminitial;
+}
+
+Transition* state_get_fsminitial(State *ste){
+    return ste->fsminitial;
+}
+
 bool state_free(State *ste){
     if(ste->ntranspointers-- > 0) return false;
 
-    reactor_slist_free_full(ste->transitions, (RDestroyNotify) trans_free);
+    trans_clist_free_full(ste->transitions);
     free(ste->id);
     free(ste);
     return true;
 }
 
 void state_add_trans(State *ste, Transition *trans){
-    ste->transitions = reactor_slist_prepend(ste->transitions, trans);
+    trans_clist_merge(ste->transitions, trans);
 }
 
 const char* state_get_id(State *ste){
@@ -66,6 +73,6 @@ void state_add_transpointer(State *ste){
     ste->ntranspointers++;
 }
 
-const RSList* state_get_trans(State *ste){
+Transition* state_get_trans(State *ste){
     return ste->transitions;
 }

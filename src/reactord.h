@@ -50,7 +50,8 @@ typedef enum _cntrlmsgtype{
     ADD_TRANSITION,
     /* from server */
     ACK,
-    AT_NOFROM
+    AT_NOFROM,
+    AT_MULTINIT
 }CntrlMsgType;
 
 typedef struct _cntrlheader{

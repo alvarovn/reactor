@@ -101,14 +101,14 @@ static char* cntrl_serialize_rem(const CntrlMsg *msg){
     
     rem = (ReactorEventMsg *) msg->cm;
     size = strlen(rem->eid)+1;
-    if((sermsg = calloc(1, size + sizeof(header))) == NULL){
+    if((sermsg = calloc(1, size + sizeof(CntrlHeader))) == NULL){
         dbg_e("Error on malloc() the serialized message.", NULL);
         goto end;
     }
     header = (CntrlHeader *) sermsg;
     header->size = size;
     header->cmt = REACTOR_EVENT;
-    strncpy(&sermsg[sizeof(header)],rem->eid, size);
+    strncpy(&sermsg[sizeof(CntrlHeader)],rem->eid, size);
     
 end:
     return sermsg;
@@ -139,7 +139,7 @@ static char* cntrl_serialize_atm(const CntrlMsg *msg){
     header = (CntrlHeader *) sermsg;
     header->size = size;
     header->cmt = ADD_TRANSITION;
-    ismsg = &sermsg[sizeof(header)];
+    ismsg = sermsg+sizeof(CntrlHeader);
     strcpy(ismsg, atm->action);
     ismsg += strlen(atm->action)+1;
     strncpy(ismsg, (char *)&enidscount, sizeof(int));
@@ -169,6 +169,7 @@ int cntrl_send_msg(Cntrl *cntrl, const CntrlMsg *msg){
     switch(msg->cmt){        
         case ACK:
         case AT_NOFROM:
+	case AT_MULTINIT:
             header.cmt = msg->cmt;
             header.size = 0;
             write(cntrl->psfd, (char *) &header, sizeof(header));

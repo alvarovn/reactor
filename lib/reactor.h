@@ -89,6 +89,15 @@ inline static RSList* reactor_slist_next(RSList *rsl){
     return g_slist_next(rsl);
 }
 
+inline static RSList* reactor_slist_remove(RSList *rsl, void *data){
+    return g_slist_remove(rsl, data);
+}
+// typedef GList RList;
+// 
+// inline static RList* reactorslist_prepend(RList *rl, void *data){
+//     return g_list_prepend(rl, data);
+// }
+
 /* log */
 
 #define FACILITY LOG_DAEMON
@@ -135,6 +144,7 @@ void en_clear_curr_trans(EventNotice *en);
 const char* en_get_id(EventNotice *en);
 void en_add_transpointer(EventNotice *en);
 const RSList* en_get_currtrans(EventNotice *en);
+void en_remove_one_curr_trans(EventNotice *en, Transition *trans);
 /* state.c */
 
 typedef struct _state State;
@@ -144,8 +154,9 @@ bool state_free(State *ste);
 void state_add_trans(State *ste, Transition *trans);
 const char* state_get_id(State *ste);
 void state_add_transpointer(State *ste);
-const RSList* state_get_trans(State *ste);
-
+Transition* state_get_trans(State *ste);
+void state_set_fsminitial(State *ste, Transition *fsminitial);
+Transition* state_get_fsminitial(State *ste);
 /* transition.c */
 
 typedef enum _actiontypes{
@@ -161,5 +172,9 @@ bool trans_notice_event(Transition *trans);
 void trans_add_requisite(Transition *trans, EventNotice *en);
 const State* trans_get_dest(Transition *trans);
 const RSList* trans_get_enrequisites(Transition *trans);
+void trans_clist_merge(Transition* clist1, Transition* clist2);
+Transition* trans_clist_remove_link(Transition* trans);
+void trans_clist_free_full(Transition* trans);
+Transition* trans_clist_next(Transition *clist);
 
 #endif

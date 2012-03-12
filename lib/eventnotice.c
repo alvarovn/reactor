@@ -72,3 +72,7 @@ const RSList* en_get_currtrans(EventNotice *en){
 void en_add_transpointer(EventNotice *en) {
     en->ntranspointers++;
 }
+
+void en_remove_one_curr_trans(EventNotice *en, Transition *trans){
+    reactor_slist_remove(en->currtrans, (void *)trans);
+}

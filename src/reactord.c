@@ -38,17 +38,44 @@ Cntrl *cntrl;
 
 /* control messages handlers */
 
-static Transition* add_init_trans(AddTransMsg *msg, bool init){
-    State *stt;
-    Transition *trans;
+static CntrlMsgType add_trans_handler(AddTransMsg *msg){
+    Transition *trans, *fsminitial = NULL;
+    State *from, *to = NULL;
     EventNotice *en;
+    bool init;
+    CntrlMsgType cmt = ACK;
     
-    stt = (State *) reactor_hash_table_lookup(states, msg->to);
-    if(stt == NULL) stt = state_new(msg->to);
-    reactor_hash_table_insert(states, state_get_id(stt), stt);
+    init = *(msg->from) == NULL || msg->from == NULL;
     
-    trans = trans_new(stt);
-    state_add_transpointer(stt);
+    if(!init){
+      from = reactor_hash_table_lookup(states, msg->from);
+      if(from == NULL){
+	  warn("Origin state '%s' must exist and it doesn't. The transition won't be added.", msg->from);
+	  cmt = AT_NOFROM;
+	  goto end;
+      }
+    }
+    
+    to = (State *) reactor_hash_table_lookup(states, msg->to);
+    if(to == NULL) {
+	to = state_new(msg->to);
+    }
+    else{
+	if(init || state_get_fsminitial(from) != state_get_fsminitial(to)){
+	    /* User is trying to put multiple initial transitions to the same state machine */
+	    /* TODO Make a copy of the portion of the state machine that they will share */ 
+	    warn("Trying to set multiple initial transitions to the same state machine. The transition won't be added");
+	    cmt = AT_MULTINIT;
+	    goto end;
+	}
+    }
+      
+    reactor_hash_table_insert(states, state_get_id(to), to);
+    
+    trans = trans_new(to);
+    state_add_transpointer(to);
+    if(init) state_set_fsminitial(to, trans);
+    else state_set_fsminitial(to, state_get_fsminitial(from));
     /* TODO     While we don't get from the event the shell to execute 
      *          the command, we should get the current shell and use it.
      */
@@ -66,32 +93,20 @@ static Transition* add_init_trans(AddTransMsg *msg, bool init){
         if(init) en_add_curr_trans(en, trans);
     }
     if(init) info("New initial transition to state '%s'.", msg->to);
-    return trans;
-}
-
-static Transition* add_trans_handler(AddTransMsg *msg){
-    Transition *trans = NULL;
-    State *stt;
-    if(*(msg->from) == NULL || msg->from == NULL) return add_init_trans(msg, true);
-        
-    stt = reactor_hash_table_lookup(states, msg->from);
-    if(stt == NULL){
-        warn("Origin state '%s' must exist and it doesn't. The transition won't be added.", msg->from);
-           goto end;
+    else{
+      state_add_trans(from, trans);
+      info("New transition from state '%s' to state '%s'.", msg->from, msg->to);
     }
-    
-    trans = add_init_trans(msg, false);
-    state_add_trans(stt, trans);
-    info("New transition from state '%s' to state '%s'.", msg->from, msg->to);
 end:
-    return trans;
+    return cmt;
 }
 
 static int reactor_event_handler(const ReactorEventMsg *msg){
     int error;
     EventNotice *en;
     const RSList *currtrans;
-    RSList *ftrans = NULL;
+    Transition *ftrans = NULL;
+    Transition *transaux = NULL;
     
     error = 0;
     en = (EventNotice *) reactor_hash_table_lookup(eventnotices, msg->eid);
@@ -105,13 +120,15 @@ static int reactor_event_handler(const ReactorEventMsg *msg){
     
     RSList *rsl;
     for (rsl = currtrans; rsl != NULL; rsl = reactor_slist_next(rsl)){
-        
-        if(trans_notice_event((Transition *) rsl->data)){
+        transaux = (Transition *) rsl->data;
+        if(trans_notice_event(transaux)){
+	    /* clear currtrans from the current state */
+	    trans_clist_clear_curr_trans(transaux);
             /* forward on the state machine */
-            for(RSList *rsl2 = state_get_trans( trans_get_dest((Transition *) rsl->data) );
-                rsl2 != NULL;
-                rsl2 = reactor_slist_next(rsl2)){
-                    ftrans = reactor_slist_prepend(ftrans, rsl2->data);
+            for(Transition *tcl2 = state_get_trans( trans_get_dest(transaux) );
+                tcl2 != NULL;
+                tcl2 = trans_clist_next(tcl2)){
+                    trans_clist_merge(ftrans, tcl2);
             }
         }
     }
@@ -119,12 +136,12 @@ static int reactor_event_handler(const ReactorEventMsg *msg){
     
     /* Insert into eventnotices the new current valid transitions */
     
-    for (RSList *rsl = ftrans; rsl != NULL; rsl = reactor_slist_next(rsl)){
+    for (Transition *tcl = ftrans; tcl != NULL; tcl = trans_clist_next(tcl)){
         
-        for(RSList *rsl2 = trans_get_enrequisites(rsl->data);
+        for(RSList *rsl2 = trans_get_enrequisites(tcl);
             rsl2 != NULL;
             rsl2 = reactor_slist_next(rsl2)){
-                en_add_curr_trans((EventNotice *)rsl2->data, (Transition *)rsl->data);
+                en_add_curr_trans((EventNotice *)rsl2->data, tcl);
             }
     }
 end:
@@ -147,9 +164,7 @@ static void receive_cntrl_msg(int fd, short ev, void *arg){
             cntrl_rem_free(msg->cm);
             break;
         case ADD_TRANSITION:
-            if(add_trans_handler((AddTransMsg *) msg->cm) == NULL){
-                response.cm = AT_NOFROM;
-            }
+            response.cmt = add_trans_handler((AddTransMsg *) msg->cm);
             cntrl_send_msg(cntrl, &response);
             cntrl_atm_free(msg->cm);
             break;
@@ -236,3 +251,4 @@ int main(int argc, char *argv[]) {
 exit:
     return error;
 }
+
