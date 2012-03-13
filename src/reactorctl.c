@@ -21,6 +21,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "reactord.h"
 
@@ -73,6 +74,7 @@ int main(int argc, char *argv[]) {
         }
         cntrl_peer_close(cntrl);
         cntrl_free(cntrl);
+        sleep(2);
     }
     
     return 0;
