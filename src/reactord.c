@@ -48,26 +48,26 @@ static CntrlMsgType add_trans_handler(AddTransMsg *msg){
     init = *(msg->from) == NULL || msg->from == NULL;
     
     if(!init){
-      from = reactor_hash_table_lookup(states, msg->from);
-      if(from == NULL){
-	  warn("Origin state '%s' must exist and it doesn't. The transition won't be added.", msg->from);
-	  cmt = AT_NOFROM;
-	  goto end;
-      }
+        from = reactor_hash_table_lookup(states, msg->from);
+        if(from == NULL){
+            warn("Origin state '%s' must exist and it doesn't. The transition won't be added.", msg->from);
+            cmt = AT_NOFROM;
+            goto end;
+        }
     }
     
     to = (State *) reactor_hash_table_lookup(states, msg->to);
     if(to == NULL) {
-	to = state_new(msg->to);
+        to = state_new(msg->to);
     }
     else{
-	if(init || state_get_fsminitial(from) != state_get_fsminitial(to)){
-	    /* User is trying to put multiple initial transitions to the same state machine */
-	    /* TODO Make a copy of the portion of the state machine that they will share */ 
-	    warn("Trying to set multiple initial transitions to the same state machine. The transition won't be added");
-	    cmt = AT_MULTINIT;
-	    goto end;
-	}
+        if(init || state_get_fsminitial(from) != state_get_fsminitial(to)){
+            /* User is trying to put multiple initial transitions to the same state machine */
+            /* TODO Make a copy of the portion of the state machine that they will share */ 
+            warn("Trying to set multiple initial transitions to the same state machine. The transition won't be added");
+            cmt = AT_MULTINIT;
+            goto end;
+        }
     }
       
     reactor_hash_table_insert(states, state_get_id(to), to);
@@ -95,8 +95,8 @@ static CntrlMsgType add_trans_handler(AddTransMsg *msg){
     }
     if(init) info("New initial transition to state '%s'.", msg->to);
     else{
-      state_add_trans(from, trans);
-      info("New transition from state '%s' to state '%s'.", msg->from, msg->to);
+        state_add_trans(from, trans);
+        info("New transition from state '%s' to state '%s'.", msg->from, msg->to);
     }
 end:
     return cmt;
@@ -123,18 +123,18 @@ static int reactor_event_handler(const ReactorEventMsg *msg){
     RSList *rsl;
     for (rsl = currtrans; rsl != NULL; rsl = reactor_slist_next(rsl)){
         transaux = (Transition *) rsl->data;
-        if(trans_is_active(transaux) && trans_notice_event(transaux)){
-	    /* clear currtrans from the current state */
-	    trans_clist_clear_curr_trans(transaux);
+        if(trans_notice_event(transaux)){
+            /* clear currtrans from the current state */
+            trans_clist_clear_curr_trans(transaux);
             /* forward on the state machine */
-	    transaux2 = state_get_trans(trans_get_dest(transaux));
-	    if(transaux2 != NULL){
-		Transition *tcl2 = transaux2;
-		do{
-		    ftrans = reactor_slist_prepend(ftrans, (void *)tcl2);
-		    tcl2 = trans_clist_next(tcl2);
-		}while(transaux2 != tcl2);
-	    }
+            transaux2 = state_get_trans(trans_get_dest(transaux));
+            if(transaux2 != NULL){
+                Transition *tcl2 = transaux2;
+                do{
+                    ftrans = reactor_slist_prepend(ftrans, (void *)tcl2);
+                    tcl2 = trans_clist_next(tcl2);
+                }while(transaux2 != tcl2);
+            }
         }
     }
     en_clear_curr_trans(en);
@@ -142,7 +142,7 @@ static int reactor_event_handler(const ReactorEventMsg *msg){
     /* Insert into eventnotices the new current valid transitions */
     
     for (RSList *trsl = ftrans; trsl != NULL; trsl = reactor_slist_next(trsl)){
-        for(RSList *rsl2 = trans_get_enrequisites(trsl);
+        for(RSList *rsl2 = trans_get_enrequisites((Transition *)trsl->data);
             rsl2 != NULL;
             rsl2 = reactor_slist_next(rsl2)){
                 en_add_curr_trans((EventNotice *)rsl2->data, (Transition *)trsl->data);
@@ -161,8 +161,8 @@ static void receive_cntrl_msg(int fd, short ev, void *arg){
     response.cm = NULL;
     cntrl_listen(cntrl);
     if((msg = cntrl_receive_msg(cntrl)) == NULL){
-      	err("Error in the communication with 'reactorctl'");
-	goto end;
+        err("Error in the communication with 'reactorctl'");
+        goto end;
     }
     switch(msg->cmt){
         case REACTOR_EVENT:

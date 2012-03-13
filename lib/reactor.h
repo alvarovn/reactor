@@ -176,7 +176,6 @@ Transition* trans_clist_merge(Transition* clist1, Transition* clist2);
 Transition* trans_clist_remove_link(Transition* trans);
 void trans_clist_free_full(Transition* trans);
 Transition* trans_clist_next(Transition *clist);
-void trans_set_active(Transition *trans, bool active);
-bool trans_is_active(Transition *trans);
+void trans_clist_clear_curr_trans(Transition *clist);
 
 #endif

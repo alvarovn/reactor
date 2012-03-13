@@ -53,7 +53,6 @@ bool en_free(EventNotice *en) {
 }
 
 void en_add_curr_trans(EventNotice *en, Transition *trans) {
-    trans_set_active(trans, true);
     en->currtrans = reactor_slist_prepend(en->currtrans, trans);
 }
 
@@ -75,5 +74,5 @@ void en_add_transpointer(EventNotice *en) {
 }
 
 void en_remove_one_curr_trans(EventNotice *en, Transition *trans){
-    reactor_slist_remove(en->currtrans, (void *)trans);
+    en->currtrans = reactor_slist_remove(en->currtrans, (void *)trans);
 }

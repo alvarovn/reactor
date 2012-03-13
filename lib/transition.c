@@ -32,7 +32,6 @@ struct _transition{
     State* dest;
     ActionTypes at;
     void *typedaction;
-    bool active;
     /* Transition circular list */
     Transition *clistnext;
     Transition *clistprev;
@@ -55,31 +54,22 @@ Transition* trans_new(State *dest){
     trans->dest = dest;
     trans->clistnext = trans;
     trans->clistprev = trans;
-    trans->active = false;
 //     trans->at = CMD_ACTION;
 end:
     return trans;
 }
 
-bool trans_is_active(Transition *trans){
-    return trans->active;
-}	
-
-void trans_set_active(Transition *trans, bool active){
-    trans->active = active;
-}
-
 Transition* trans_clist_merge(Transition* clist1, Transition* clist2){
-    Transition *aux, aux2;
+    Transition *aux;
     if(clist1 == NULL){
-	clist1 = clist2;
-	goto end;
+        clist1 = clist2;
+        goto end;
     }
     aux = clist1->clistnext;
-    aux->clistprev = clist2;
     clist1->clistnext = clist2->clistnext;
-    clist2->clistnext->clistprev = clist1;
     clist2->clistnext = aux;
+    clist2->clistnext->clistprev = clist2;
+    clist1->clistnext->clistprev = clist1;
 end:
     return clist1;
 }
@@ -112,13 +102,15 @@ Transition* trans_clist_next(Transition *clist){
 }
 
 /* TODO This way to clear the currtrans no more needed is very inefficient. Fix it */
-Transition* trans_clist_clear_curr_trans(Transition *clist){
+void trans_clist_clear_curr_trans(Transition *clist){
     Transition *aux;
-    
-    for(aux= clist;clist->clistnext != aux; clist = trans_clist_next(clist)){
-	clist->noticedevents = 0;
-	clist->active = false;
-	reactor_slist_foreach(clist->enrequisites, en_remove_one_curr_trans, clist);
+    aux = clist;
+    if(clist != NULL){
+        do{
+            clist->noticedevents = 0;
+            reactor_slist_foreach(clist->enrequisites, en_remove_one_curr_trans, clist);
+            clist = trans_clist_next(clist);
+        }while(clist != aux);
     }
 }
 

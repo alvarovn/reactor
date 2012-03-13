@@ -36,19 +36,19 @@ int main(int argc, char *argv[]) {
         
     msgs[0].cmt = ADD_TRANSITION;
     msgs[0].cm = (void *)calloc(1, sizeof(AddTransMsg));
-    ((AddTransMsg *)msgs[0].cm)->action =  "echo \"De 'init' a 'A'\" >> /home/alvaro/toma_ya";
+    ((AddTransMsg *)msgs[0].cm)->action =  "echo \"De 'init' a 'A'\" >> /home/lostevil/toma_ya";
     ((AddTransMsg *)msgs[0].cm)->enids = ens;
     ((AddTransMsg *)msgs[0].cm)->to = "A";
     ((AddTransMsg *)msgs[0].cm)->from = "";
     msgs[1].cmt = ADD_TRANSITION;
     msgs[1].cm = (void *)calloc(1, sizeof(AddTransMsg));
-    ((AddTransMsg *)msgs[1].cm)->action =  "echo \"De 'A' a 'B'\" >> /home/alvaro/toma_ya";
+    ((AddTransMsg *)msgs[1].cm)->action =  "echo \"De 'A' a 'B'\" >> /home/lostevil/toma_ya";
     ((AddTransMsg *)msgs[1].cm)->enids = ens;
     ((AddTransMsg *)msgs[1].cm)->to = "B";
     ((AddTransMsg *)msgs[1].cm)->from = "A";
     msgs[2].cmt = ADD_TRANSITION;
     msgs[2].cm = (void *)calloc(1, sizeof(AddTransMsg));
-    ((AddTransMsg *)msgs[2].cm)->action =  "echo \"De 'A' a 'C'\" >> /home/alvaro/toma_ya";
+    ((AddTransMsg *)msgs[2].cm)->action =  "echo \"De 'A' a 'C'\" >> /home//toma_ya";
     ((AddTransMsg *)msgs[2].cm)->enids = ens;
     ((AddTransMsg *)msgs[2].cm)->to = "C";
     ((AddTransMsg *)msgs[2].cm)->from = "A";
