@@ -25,8 +25,6 @@
 #include <stdbool.h>
 #include <glib.h>
 
-#define EXIT_FAILURE 1
-
 typedef struct _transition Transition;
 
 static inline bool str_eq(const char *s1, const char *s2){
@@ -92,6 +90,10 @@ inline static RSList* reactor_slist_next(RSList *rsl){
 inline static RSList* reactor_slist_remove(RSList *rsl, void *data){
     return g_slist_remove(rsl, data);
 }
+
+inline static RSList* reactor_slist_remove_all(RSList *rsl, void *data){
+    return g_slist_remove_all(rsl, data);
+}
 // typedef GList RList;
 // 
 // inline static RList* reactorslist_prepend(RList *rl, void *data){
@@ -143,7 +145,7 @@ void en_add_curr_trans(EventNotice *en, Transition *trans);
 void en_clear_curr_trans(EventNotice *en);
 const char* en_get_id(EventNotice *en);
 void en_add_transpointer(EventNotice *en);
-const RSList* en_get_currtrans(EventNotice *en);
+const RSList** en_get_currtrans_ref(EventNotice *en);
 void en_remove_one_curr_trans(EventNotice *en, Transition *trans);
 /* state.c */
 

@@ -105,10 +105,13 @@ end:
 static int reactor_event_handler(const ReactorEventMsg *msg){
     int error;
     EventNotice *en;
-    const RSList *currtrans;
-    RSList *ftrans = NULL;
-    Transition *transaux = NULL;
-    Transition *transaux2 = NULL;
+    RSList  **currtransref = NULL, 
+            *currtrans = NULL, 
+            *nexttrans = NULL, 
+            *nextens = NULL;
+    Transition  *trans = NULL, 
+                *transinit = NULL, 
+                *transindex = NULL;
     
     error = 0;
     en = (EventNotice *) reactor_hash_table_lookup(eventnotices, msg->eid);
@@ -117,35 +120,34 @@ static int reactor_event_handler(const ReactorEventMsg *msg){
         error = -1;
         return error;
     }
-
-    currtrans = en_get_currtrans(en);
     
-    RSList *rsl;
-    for (rsl = currtrans; rsl != NULL; rsl = reactor_slist_next(rsl)){
-        transaux = (Transition *) rsl->data;
-        if(trans_notice_event(transaux)){
-            /* clear currtrans from the current state */
-            trans_clist_clear_curr_trans(transaux);
-            /* forward on the state machine */
-            transaux2 = state_get_trans(trans_get_dest(transaux));
-            if(transaux2 != NULL){
-                Transition *tcl2 = transaux2;
-                do{
-                    ftrans = reactor_slist_prepend(ftrans, (void *)tcl2);
-                    tcl2 = trans_clist_next(tcl2);
-                }while(transaux2 != tcl2);
+    for (currtransref = en_get_currtrans_ref(en); 
+         *currtransref != NULL; 
+         /* clear currtrans from the current state */
+         trans_clist_clear_curr_trans(trans)){
+        
+            currtrans = *currtransref;
+            trans = (Transition *) currtrans->data;
+            if(trans_notice_event(trans)){
+                /* forward on the state machine */
+                transinit = state_get_trans(trans_get_dest(trans));
+                if(transinit != NULL){
+                transindex = transinit;
+                    do{
+                        nexttrans = reactor_slist_prepend(nexttrans, (void *)transindex);
+                        transindex = trans_clist_next(transindex);
+                    }while(transinit != transindex);
+                }
             }
-        }
     }
-    en_clear_curr_trans(en);
     
     /* Insert into eventnotices the new current valid transitions */
     
-    for (RSList *trsl = ftrans; trsl != NULL; trsl = reactor_slist_next(trsl)){
-        for(RSList *rsl2 = trans_get_enrequisites((Transition *)trsl->data);
-            rsl2 != NULL;
-            rsl2 = reactor_slist_next(rsl2)){
-                en_add_curr_trans((EventNotice *)rsl2->data, (Transition *)trsl->data);
+    for (; nexttrans != NULL; nexttrans = reactor_slist_next(nexttrans)){
+        for(nextens = trans_get_enrequisites((Transition *)nexttrans->data);
+            nextens != NULL;
+            nextens = reactor_slist_next(nextens)){
+                en_add_curr_trans((EventNotice *)nextens->data, (Transition *)nexttrans->data);
             }
     }
 end:

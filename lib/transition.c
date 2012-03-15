@@ -61,6 +61,7 @@ end:
 
 Transition* trans_clist_merge(Transition* clist1, Transition* clist2){
     Transition *aux;
+    
     if(clist1 == NULL){
         clist1 = clist2;
         goto end;

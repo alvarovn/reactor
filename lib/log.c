@@ -28,6 +28,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <errno.h>
 
 #include "reactor.h"
