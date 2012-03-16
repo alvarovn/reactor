@@ -145,7 +145,7 @@ void en_add_curr_trans(EventNotice *en, Transition *trans);
 void en_clear_curr_trans(EventNotice *en);
 const char* en_get_id(EventNotice *en);
 void en_add_transpointer(EventNotice *en);
-const RSList** en_get_currtrans_ref(EventNotice *en);
+const RSList* en_get_currtrans(EventNotice *en);
 void en_remove_one_curr_trans(EventNotice *en, Transition *trans);
 /* state.c */
 

@@ -22,7 +22,6 @@
 #include <stdlib.h>
 #include <grp.h>
 
-#include "reactor.h"
 #include "reactord.h"
 
 void free_users(User* u){

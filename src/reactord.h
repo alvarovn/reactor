@@ -21,61 +21,71 @@
 #ifndef REACTOR_H_INCLUDED
 #define REACTOR_H_INCLUDED
 
+#include "reactor.h"
+
 #include <sys/types.h>
 
 /* TODO Socket must be changed to a secure path */
 
 #define SOCK_PATH "/tmp/rctlsock"
 
-typedef struct _addtransmsg{
+#define skip_blanks(c) \
+            while (*c == '\t' || *c == ' ') \
+                c+=sizeof(char);
+            
+#define skip_noblanks(c, i) \
+            while (c[i] != '\t' && c[i] != ' ' && c[i] != '&' && c[i] != '#' && c[i] != '-' && c[i] != '\0') \
+                i++;
+
+struct r_rule{
     char *action;
-    char **enids; 
+    RSList *enids; 
     char *to; 
     char *from;
-}AddTransMsg;
+};
 
-typedef struct _reactoreventmsg{
+struct r_event{
     char *eid;
-    int uid;
+//     int uid;
     /* In the future this field may contain more information about the font 
      * than the pid.
      */ 
-    pid_t fontpid;  
-} ReactorEventMsg;
+//     pid_t fontpid;  
+};
 
-/* cntrl.c */
-typedef enum _cntrlmsgtype{
+enum rmsg_type{
     /* to server */
     REACTOR_EVENT,
-    ADD_TRANSITION,
+    RULE,
     /* from server */
     ACK,
-    AT_NOFROM,
-    AT_MULTINIT
-}CntrlMsgType;
+    RULE_NOFROM,
+    RULE_MULTINIT,
+    RULE_MALFORMED
+};
 
-typedef struct _cntrlheader{
+struct rmsg_hd{
     int size;
-    CntrlMsgType cmt;
-}CntrlHeader;
+    enum rmsg_type mtype;
+};
 
-typedef struct _cntrlmsg{
-    CntrlMsgType cmt;
-    void *cm;
-}CntrlMsg;
+struct r_msg{
+    struct rmsg_hd hd;
+    char *msg;
+};
 
+/* cntrl.c */
 typedef struct _cntrl Cntrl;
 
-int cntrl_send_msg(Cntrl* cntrl, const CntrlMsg* msg);
+int cntrl_send_msg(Cntrl *cntrl, const struct r_msg *msg);
 void cntrl_peer_close(Cntrl *cntrl);
-CntrlMsg* cntrl_receive_msg(Cntrl *cntrl);
+struct r_msg* cntrl_receive_msg(Cntrl *cntrl);
 void cntrl_free(Cntrl *cntrl);
 Cntrl* cntrl_new(bool server);
 int cntrl_listen(Cntrl* cntrl);
-int cntrl_get_fd(Cntrl *cntrl);
-void cntrl_atm_free(AddTransMsg *atm);
-void cntrl_rem_free(ReactorEventMsg *rem);
 int cntrl_connect(Cntrl *cntrl);
+int cntrl_get_fd(Cntrl *cntrl);
+
 
 /* user.c */
 typedef struct _user User;
@@ -87,4 +97,6 @@ struct _user{
 User* load_users(const char*);
 void free_users(User*);
 
+/* rules.c */
+struct r_rule* rules_parse_one(char *rulestr);
 #endif

@@ -24,8 +24,8 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <stdbool.h>
+#include <arpa/inet.h>
 
-#include "reactor.h"
 #include "reactord.h"
 
 typedef struct _cntrl{
@@ -37,216 +37,84 @@ typedef struct _cntrl{
     bool connected;
 }Cntrl;
 
-
-
-/* AddTransMsg serialization:
- * string action;
- * int enidscount
- * string enids[?];
- * string to; 
- * string from; NULL if initial trans.
- */
-static AddTransMsg* cntrl_deserialize_atm(char *msg){
-    AddTransMsg *atm = NULL;
-    int i, enidscount;
-            
-    if((atm = (AddTransMsg *) calloc(1, sizeof(AddTransMsg))) == NULL){
-       goto malloc_error;
-    }
-    
-    atm->action = strdup(msg);
-    msg += strlen(msg)+1;
-    enidscount = (int) *msg;
-    msg += sizeof(int);
-    if((atm->enids = (char **) calloc(enidscount+1, sizeof(char*))) == NULL){
-        cntrl_atm_free(atm);
-        atm = NULL;
-        goto malloc_error;
-    }
-    for(i=0; i<enidscount; i++){
-        atm->enids[i] = strdup(msg);
-        msg += strlen(msg)+1;
-    }
-    atm->enids[enidscount] = NULL;
-    atm->to =strdup(msg);
-    msg += strlen(msg)+1;
-    atm->from = strdup(msg);
-    return atm;
-    
-malloc_error:
-    dbg_e("Error on malloc AddTransMsg", NULL);
-    return atm;
-}
-/* ReactorEventMsg serialization:
- * string eid;
- */
-static ReactorEventMsg* cntrl_deserialize_rem(char *msg){
-    ReactorEventMsg *rem;
-    if((rem = (ReactorEventMsg *) calloc(1, sizeof(ReactorEventMsg))) == NULL){
-       goto malloc_error;
-    }
-    /* TODO Set uid and pid */
-    rem->eid = strdup(msg);
-    return rem;
-malloc_error:
-    dbg_e("Error on malloc ReactorEventMsg", NULL);
-    return rem;
-}
-
-static char* cntrl_serialize_rem(const CntrlMsg *msg){
-    ReactorEventMsg *rem;
-    char *sermsg;
-    CntrlHeader *header;
-    int size;
-    
-    rem = (ReactorEventMsg *) msg->cm;
-    size = strlen(rem->eid)+1;
-    if((sermsg = calloc(1, size + sizeof(CntrlHeader))) == NULL){
-        dbg_e("Error on malloc() the serialized message.", NULL);
-        goto end;
-    }
-    header = (CntrlHeader *) sermsg;
-    header->size = size;
-    header->cmt = REACTOR_EVENT;
-    strncpy(&sermsg[sizeof(CntrlHeader)],rem->eid, size);
-    
-end:
-    return sermsg;
-}
-
-/* TODO Needs to be fixed, calls strlen too much. Inefficient */
-static char* cntrl_serialize_atm(const CntrlMsg *msg){
-    AddTransMsg *atm;
-    char **ienids;
-    int size, enidscount;
-    char *sermsg, *ismsg;
-    CntrlHeader *header;
-    
-    atm = (AddTransMsg *) msg->cm;
-    size = sizeof(int);
-    enidscount = 0;
-    for(ienids = atm->enids; *ienids!=NULL; ienids++){
-        size += strlen(*ienids)+1;
-        enidscount++;
-    }
-    size += strlen(atm->action)+1;
-    size += strlen(atm->to)+1;
-    size += strlen(atm->from)+1;
-    if((sermsg = (char *) calloc(1, size + sizeof(CntrlHeader))) == NULL){
-        dbg_e("Error on malloc() the serialized message.", NULL);
-        goto end;
-    }
-    header = (CntrlHeader *) sermsg;
-    header->size = size;
-    header->cmt = ADD_TRANSITION;
-    ismsg = sermsg+sizeof(CntrlHeader);
-    strcpy(ismsg, atm->action);
-    ismsg += strlen(atm->action)+1;
-    strncpy(ismsg, (char *)&enidscount, sizeof(int));
-    ismsg += sizeof(int);
-    for(ienids = atm->enids; *ienids!=NULL; ienids++){
-        strcpy(ismsg, *ienids);
-        ismsg += strlen(*ienids)+1;
-    }
-    strcpy(ismsg, atm->to);
-    ismsg += strlen(atm->to)+1;
-    strcpy(ismsg, atm->from);
-end:
-    return sermsg;
-}
-
-int cntrl_send_msg(Cntrl *cntrl, const CntrlMsg *msg){
-    int error, size;
-    CntrlMsg *response;
-    char *sermsg;
-    CntrlHeader header;
+int cntrl_send_msg(Cntrl *cntrl, const struct r_msg *msg){
+    int error;
+    struct r_msg *response = NULL;
+    struct rmsg_hd hd;
     
     error = 0;
     if(cntrl == NULL){
+        error = -1;
         dbg("Trying to send a message to a 'NULL' cntrl", NULL);
         goto end;
     }
-    switch(msg->cmt){        
-        case ACK:
-        case AT_NOFROM:
-	case AT_MULTINIT:
-            header.cmt = msg->cmt;
-            header.size = 0;
-            write(cntrl->psfd, (char *) &header, sizeof(header));
-            goto end;
-            break;
+    hd.size = htonl((uint32_t)msg->hd.size);
+    hd.mtype = htonl((uint32_t)msg->hd.mtype);
+    write(cntrl->psfd, (const void *) &hd, sizeof(struct rmsg_hd));
+    switch(msg->hd.mtype){
+        case RULE:
         case REACTOR_EVENT:
-            sermsg = cntrl_serialize_rem(msg);
-            break;
-        case ADD_TRANSITION:
-            sermsg = cntrl_serialize_atm(msg);
-            break;
+           write(cntrl->psfd, msg->msg, msg->hd.size);
+           response = cntrl_receive_msg(cntrl);
+           error = (int) response->hd.mtype;
+           free(response->msg);
+           free(response);
+           break;
     }
-    header = *(CntrlHeader *)sermsg;
-    write(cntrl->psfd, (char *) sermsg, header.size + sizeof(header));
-    response = cntrl_receive_msg(cntrl);
-    error = (int) response->cmt;
-    cntrl_msg_free(response);
-    cntrl_msg_free(sermsg);
+    
 end:
     return error;
 }
 
-CntrlMsg* cntrl_receive_msg(Cntrl *cntrl){
+struct r_msg* cntrl_receive_msg(Cntrl *cntrl){
     int *sfd, readcount;
-    CntrlMsg * cm = NULL;
-    CntrlHeader ch;
-    char *msg;
+    struct r_msg * rmsg = NULL;
     
     readcount = 0;
     if(cntrl == NULL){
         dbg("Trying to receive a message from a 'NULL' cntrl", NULL);
         goto end;
     }
-    ch.size =0;
     if(cntrl->server){
         if(!cntrl->connected) cntrl->psfd = accept(cntrl->sfd, NULL, NULL);
         cntrl->connected = true;
     }
 
-    read(cntrl->psfd, (char *) &ch, sizeof(CntrlHeader));
     
+
+    if((rmsg = (struct r_msg *) calloc(1, sizeof(struct r_msg))) == NULL){
+        goto malloc_error;
+    }
+    
+    rmsg->hd.size = 0;
+    read(cntrl->psfd, (char *) &rmsg->hd, sizeof(struct rmsg_hd));
+    rmsg->hd.mtype = ntohl((u_int32_t) rmsg->hd.mtype);
+    rmsg->hd.size = ntohl((u_int32_t) rmsg->hd.size);
+
     /* TODO: This is pretty insecure since it will malloc any size sent. Fix it.
     */
-    if((msg = (char *) calloc(1, ch.size)) == NULL){
+    if((rmsg->msg = (char *) calloc(1, rmsg->hd.size)) == NULL){
+        free(rmsg);
         goto malloc_error;
     }
-    if((cm = (CntrlMsg *) calloc(1, sizeof(CntrlMsg))) == NULL){
-        free(msg);
-        goto malloc_error;
-    }
-    if((readcount = read(cntrl->psfd, msg, ch.size)) < ch.size){
-	free(msg);
-	free(cm);
-	cm = NULL;
-	goto end;
+
+    if((readcount = read(cntrl->psfd, rmsg->msg, rmsg->hd.size)) < rmsg->hd.size){
+        dbg_e("Error reading from the socket", NULL);
+        free(rmsg->msg);
+        free(rmsg);
+        rmsg = NULL;
+        goto end;
     }
     /* TODO check credentials */
-    cm->cmt = ch.cmt;
+    
     /* Call deserializers if needed */
-    switch(ch.cmt){
-        case REACTOR_EVENT:
-            cm->cm = (CntrlMsg *) cntrl_deserialize_rem(msg);
-            break;
-        case ADD_TRANSITION:
-            cm->cm = (CntrlMsg *) cntrl_deserialize_atm(msg);
-            break;
-    }
-    free(msg);
 end:
-    return cm;
+    return rmsg;
 malloc_error:
     dbg_e("Error on malloc() the new message", NULL);
-    return cm;
+    return NULL;
 
 }
-
-
 
 void cntrl_peer_close(Cntrl *cntrl){
     cntrl->connected = false;
@@ -342,31 +210,4 @@ int cntrl_get_fd(Cntrl *cntrl){
         return -1;
     }
     return cntrl->sfd;
-}
-
-void cntrl_atm_free(AddTransMsg *atm){
-    char **i;
-    free(atm->action);
-    for(i=atm->enids; *i!=NULL; i++){
-        free(*i);
-    }
-    free(atm->from);
-    free(atm->to);
-    free(atm);
-}
-
-void cntrl_rem_free(ReactorEventMsg *rem){
-    free(rem->eid);
-    free(rem);
-}
-
-void cntrl_msg_free(CntrlMsg *msg){
-    switch(msg->cmt){
-        case REACTOR_EVENT:
-            cntrl_rem_free((ReactorEventMsg *) msg->cm);
-            break;
-        case ADD_TRANSITION:
-            cntrl_atm_free((AddTransMsg *) msg->cm);
-            break;
-    }
 }

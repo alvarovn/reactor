@@ -24,8 +24,6 @@
 #include <sys/types.h>
 #include <event.h>
 
-
-#include "reactor.h"
 #include "reactord.h"
 
 #define SOCK_BUFF_SIZE 1024
@@ -38,20 +36,25 @@ Cntrl *cntrl;
 
 /* control messages handlers */
 
-static CntrlMsgType add_trans_handler(AddTransMsg *msg){
+static enum rmsg_type reactor_rule_handler(struct r_rule *msg){
     Transition *trans, *fsminitial = NULL;
     State *from, *to = NULL;
     EventNotice *en = NULL;
     bool init;
-    CntrlMsgType cmt = ACK;
+    enum rmsg_type cmt = ACK;
     
-    init = *(msg->from) == NULL || msg->from == NULL;
+    if(msg == NULL){
+        warn("Rule malformed.");
+        cmt = RULE_MALFORMED;
+    }
+    
+    init = msg->from == NULL || *(msg->from) == NULL;
     
     if(!init){
         from = reactor_hash_table_lookup(states, msg->from);
         if(from == NULL){
             warn("Origin state '%s' must exist and it doesn't. The transition won't be added.", msg->from);
-            cmt = AT_NOFROM;
+            cmt = RULE_NOFROM;
             goto end;
         }
     }
@@ -65,7 +68,7 @@ static CntrlMsgType add_trans_handler(AddTransMsg *msg){
             /* User is trying to put multiple initial transitions to the same state machine */
             /* TODO Make a copy of the portion of the state machine that they will share */ 
             warn("Trying to set multiple initial transitions to the same state machine. The transition won't be added");
-            cmt = AT_MULTINIT;
+            cmt = RULE_MULTINIT;
             goto end;
         }
     }
@@ -81,11 +84,11 @@ static CntrlMsgType add_trans_handler(AddTransMsg *msg){
      */
     trans_set_cmd_action(trans, msg->action, "/bin/sh", 0);
     
-    for(; *msg->enids != NULL; msg->enids++){
-        en = (EventNotice *) reactor_hash_table_lookup(eventnotices, *msg->enids);
+    for(; msg->enids != NULL; msg->enids = reactor_slist_next(msg->enids)){
+        en = (EventNotice *) reactor_hash_table_lookup(eventnotices, msg->enids->data);
         if(en == NULL){
-            en = en_new(*msg->enids);
-            reactor_hash_table_insert(eventnotices, *msg->enids, en);
+            en = en_new(msg->enids->data);
+            reactor_hash_table_insert(eventnotices, msg->enids->data, en);
         }
         trans_add_requisite(trans, en);
         en_add_transpointer(en);
@@ -102,11 +105,11 @@ end:
     return cmt;
 }
 
-static int reactor_event_handler(const ReactorEventMsg *msg){
+/* TODO User r_event */
+static int reactor_event_handler(const char *msg){
     int error;
     EventNotice *en;
-    RSList  **currtransref = NULL, 
-            *currtrans = NULL, 
+    RSList  *currtrans = NULL, 
             *nexttrans = NULL, 
             *nextens = NULL;
     Transition  *trans = NULL, 
@@ -114,19 +117,17 @@ static int reactor_event_handler(const ReactorEventMsg *msg){
                 *transindex = NULL;
     
     error = 0;
-    en = (EventNotice *) reactor_hash_table_lookup(eventnotices, msg->eid);
+    en = (EventNotice *) reactor_hash_table_lookup(eventnotices, msg);
     if(en == NULL) {
-        info("Unknown event '%s' happened.", msg->eid);
+        info("Unknown event '%s' happened.", msg);
         error = -1;
         return error;
     }
     
-    for (currtransref = en_get_currtrans_ref(en); 
-         *currtransref != NULL; 
-         /* clear currtrans from the current state */
-         trans_clist_clear_curr_trans(trans)){
-        
-            currtrans = *currtransref;
+    for (currtrans = en_get_currtrans(en); 
+         currtrans != NULL;
+         currtrans = reactor_slist_next(currtrans)){
+    
             trans = (Transition *) currtrans->data;
             if(trans_notice_event(trans)){
                 /* forward on the state machine */
@@ -138,8 +139,13 @@ static int reactor_event_handler(const ReactorEventMsg *msg){
                         transindex = trans_clist_next(transindex);
                     }while(transinit != transindex);
                 }
+                /* clear all currtrans from all the events */
+                trans_clist_clear_curr_trans(trans);
+                break;
             }
     }
+    /* In case no action was executed, so no currtrans was cleared, we clear the currtrans of the las event */
+    en_clear_curr_trans(en);
     
     /* Insert into eventnotices the new current valid transitions */
     
@@ -156,30 +162,32 @@ end:
 
 /* libevent control socket callback */
 
-static void receive_cntrl_msg(int fd, short ev, void *arg){
-    CntrlMsg response;
-    CntrlMsg *msg;
-    response.cmt = ACK;
-    response.cm = NULL;
+static void receive_msg(int fd, short ev, void *arg){
+    struct r_msg response;
+    struct r_msg *msg;
+    response.hd.mtype = ACK;
+    response.hd.size = 0;
+    response.msg = NULL;
     cntrl_listen(cntrl);
     if((msg = cntrl_receive_msg(cntrl)) == NULL){
         err("Error in the communication with 'reactorctl'");
         goto end;
     }
-    switch(msg->cmt){
+    switch(msg->hd.mtype){
         case REACTOR_EVENT:
-            reactor_event_handler((ReactorEventMsg *) msg->cm);
+            reactor_event_handler(strdup(msg->msg));
             cntrl_send_msg(cntrl, &response);
-            cntrl_rem_free(msg->cm);
+            free(msg->msg);
             break;
-        case ADD_TRANSITION:
-            response.cmt = add_trans_handler((AddTransMsg *) msg->cm);
+        case RULE:
+            response.hd.mtype = reactor_rule_handler(rules_parse_one(msg->msg));
             cntrl_send_msg(cntrl, &response);
-            cntrl_atm_free(msg->cm);
+            free(msg->msg);
             break;
     }
 end:
     cntrl_peer_close(cntrl);
+    
     free(msg);
 }
 
@@ -253,7 +261,7 @@ int main(int argc, char *argv[]) {
     if(cntrl_listen(cntrl) == -1) {
         goto exit;
     }
-    event_set(&ev, cntrl_get_fd(cntrl), EV_READ | EV_PERSIST, &receive_cntrl_msg, NULL);
+    event_set(&ev, cntrl_get_fd(cntrl), EV_READ | EV_PERSIST, &receive_msg, NULL);
     event_add(&ev, NULL);
     event_dispatch();
 

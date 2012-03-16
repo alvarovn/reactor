@@ -8,6 +8,7 @@ reactord_SOURCES =	src/reactord.h \
 			src/reactord.c \
 			src/user.c \
 			src/cntrl.c \
+			src/rules.c \
 			lib/reactor.h \
 			lib/log.c \
 			lib/eventnotice.c \
@@ -18,4 +19,5 @@ reactorctl_SOURCES =	src/reactorctl.c \
 			src/reactord.h \
 			lib/reactor.h \
 			lib/log.c \
-			src/cntrl.c
+			src/cntrl.c \
+			src/rules.c
