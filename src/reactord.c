@@ -46,6 +46,7 @@ static enum rmsg_type reactor_rule_handler(struct r_rule *msg){
     if(msg == NULL){
         warn("Rule malformed.");
         cmt = RULE_MALFORMED;
+        goto end;
     }
     
     init = msg->from == NULL || *(msg->from) == NULL;
@@ -67,7 +68,7 @@ static enum rmsg_type reactor_rule_handler(struct r_rule *msg){
         if(init || state_get_fsminitial(from) != state_get_fsminitial(to)){
             /* User is trying to put multiple initial transitions to the same state machine */
             /* TODO Make a copy of the portion of the state machine that they will share */ 
-            warn("Trying to set multiple initial transitions to the same state machine. The transition won't be added");
+            warn("Trying to set multiple initial transitions to the same state machine. The transition won't be added.");
             cmt = RULE_MULTINIT;
             goto end;
         }
@@ -82,7 +83,12 @@ static enum rmsg_type reactor_rule_handler(struct r_rule *msg){
     /* TODO     While we don't get from the event the shell to execute 
      *          the command, we should get the current shell and use it.
      */
-    trans_set_cmd_action(trans, msg->action, "/bin/sh", 0);
+    if(msg->action == NULL){
+        trans_set_cmd_none(trans);
+    }
+    else{
+        trans_set_cmd_action(trans, msg->action, "/bin/sh", 0);
+    }
     
     for(; msg->enids != NULL; msg->enids = reactor_slist_next(msg->enids)){
         en = (EventNotice *) reactor_hash_table_lookup(eventnotices, msg->enids->data);

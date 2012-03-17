@@ -44,6 +44,20 @@ struct _cmdaction{
     char *cmd;
 };
 
+static void cmd_action_free(CmdAction *cmdactn){
+    free(cmdactn->cmd);
+    free(cmdactn->shell);
+    free(cmdactn);
+}
+static void trans_cmd_free(Transition *trans){
+    switch(trans->at){
+        case CMD_ACTION:
+            trans->at = CMD_NONE;
+            cmd_action_free((CmdAction *) trans->typedaction);
+            break;
+    }
+}
+
 Transition* trans_new(State *dest){
     Transition *trans = NULL;
     
@@ -54,7 +68,7 @@ Transition* trans_new(State *dest){
     trans->dest = dest;
     trans->clistnext = trans;
     trans->clistprev = trans;
-//     trans->at = CMD_ACTION;
+    trans->at = CMD_NONE;
 end:
     return trans;
 }
@@ -121,12 +135,12 @@ bool trans_set_cmd_action(Transition *trans, const char *cmd, const char *shell,
     CmdAction *cmdactn = NULL;
     bool success = true;
     
+    trans_cmd_free(trans);
     if((cmdactn = (CmdAction *) calloc(1, sizeof(CmdAction))) == NULL){
         dbg_e("Error on malloc() the new command action'", NULL);
         success = false;
         goto end;
     }
-    cmdactn->cmd = strdup(cmd);
     cmdactn->shell = strdup(shell);
     cmdactn->uid = uid;
     trans->at = CMD_ACTION;
@@ -135,19 +149,13 @@ end:
     return success;
 }
 
-static void cmd_free(CmdAction *cmdactn){
-    free(cmdactn->cmd);
-    free(cmdactn->shell);
-    free(cmdactn);
+void trans_set_cmd_none(Transition *trans){
+    trans_cmd_free(trans);
 }
 
 void trans_free(Transition *trans){
     reactor_slist_free(trans->enrequisites);
-    switch(trans->at){
-        case CMD_ACTION:
-            cmd_free((CmdAction *) trans->typedaction);
-            break;
-    }
+    trans_cmd_free(trans);
     free(trans);
     
 }
@@ -183,6 +191,9 @@ bool trans_notice_event(Transition *trans){
     switch(trans->at){
         case CMD_ACTION:
             cmd_execute((CmdAction *) trans->typedaction);
+            break;
+        default:
+            /* CMD_NONE */
             break;
     }
     trans->noticedevents = 0;

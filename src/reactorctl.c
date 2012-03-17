@@ -29,11 +29,11 @@
 
 #define TRANS_COUNT 6
 
-Cntrl *cntrl;
-
 /* By now this program only executes tests */
 int main(int argc, char *argv[]) {
+    Cntrl *cntrl;
     int opt, optindex;
+    enum rmsg_type mtype;
     const struct option options[] = {
         { "event", required_argument, NULL, 'e' },
         { "rule", required_argument, NULL, 'r' }
@@ -41,7 +41,12 @@ int main(int argc, char *argv[]) {
     
     const char *optstring = "e:r:";
     struct r_msg msg;
-        
+    
+    cntrl = cntrl_new(false);
+    if(cntrl_connect(cntrl) == -1){
+        warn("reactord is not running. Start reactord.");
+        return 1;
+    }
     for(opt = getopt_long( argc, argv, optstring, options, &optindex );
         opt != -1;
         opt = getopt_long( argc, argv, optstring, options, &optindex )){
@@ -55,11 +60,24 @@ int main(int argc, char *argv[]) {
             }
             msg.msg = strdup(optarg);
             msg.hd.size = strlen(msg.msg) + 1;
-            cntrl = cntrl_new(false);
-            if(cntrl_connect(cntrl) == -1){
-                return 1;
+
+            mtype = cntrl_send_msg(cntrl, &msg);
+            switch(mtype){
+                case RULE_NOFROM:
+                    warn("Origin state must exist and it doesn't. The transition won't be added.");
+                    break;
+                case RULE_MULTINIT:
+                    warn("Trying to set multiple initial transitions to the same state machine. The transition won't be added.");
+                    break;
+                case RULE_MALFORMED:
+                    warn("Rule malformed.");
+                    break;
+                case ACK:
+                    break;
+                default:
+                    warn("reactord is not working properly.");
+                    break;
             }
-            cntrl_send_msg(cntrl, &msg);
             cntrl_peer_close(cntrl);
             cntrl_free(cntrl);
         }
