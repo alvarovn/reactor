@@ -162,14 +162,14 @@ Transition* state_get_fsminitial(State *ste);
 /* transition.c */
 
 typedef enum _actiontypes{
-    CMD_ACTION,
-    CMD_NONE
+    CMD,
+    NONE
 }ActionTypes;
 typedef struct _cmdaction CmdAction;
 
 Transition* trans_new(State *dest);
 bool trans_set_cmd_action(Transition *trans, const char *cmd, const char *shell, int uid);
-void trans_set_cmd_none(Transition *trans);
+void trans_set_none_action(Transition *trans);
 void trans_free(Transition *trans);
 bool trans_notice_event(Transition *trans);
 void trans_add_requisite(Transition *trans, EventNotice *en);

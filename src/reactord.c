@@ -84,7 +84,7 @@ static enum rmsg_type reactor_rule_handler(struct r_rule *msg){
      *          the command, we should get the current shell and use it.
      */
     if(msg->action == NULL){
-        trans_set_cmd_none(trans);
+        trans_set_none_action(trans);
     }
     else{
         trans_set_cmd_action(trans, msg->action, "/bin/sh", 0);
