@@ -29,19 +29,30 @@
 
 #define SOCK_PATH "/tmp/rctlsock"
 
+/* TODO Group should be defined on a configuration file */
+
+#define R_GRP "events"
+
+#define RULES_FILE "reactor.rules"
+#define PATH_MAX 8192
+
 #define skip_blanks(c) \
             while (*c == '\t' || *c == ' ') \
                 c+=sizeof(char);
             
 #define skip_noblanks(c, i) \
-            while (c[i] != '\t' && c[i] != ' ' && c[i] != '&' && c[i] != '#' && c[i] != '-' && c[i] != '\0') \
+            while (c[i] != '\n' && c[i] != '\t' && c[i] != ' ' && c[i] != '&' && c[i] != '#' && c[i] != '-' && c[i] != '\0') \
                 i++;
 
 struct r_rule{
     char *action;
+    uid_t uid;
     RSList *enids; 
     char *to; 
     char *from;
+    unsigned int line;
+    /* Doubly linked list */
+    struct r_rule* next;
 };
 
 struct r_event{
@@ -88,15 +99,17 @@ int cntrl_get_fd(Cntrl *cntrl);
 
 
 /* user.c */
-typedef struct _user User;
-struct _user{
-    char *name;
-    User *next;
+struct r_user{
+    struct passwd *pw;
+    struct r_user *next;
 };
 
-User* load_users(const char*);
-void free_users(User*);
+struct r_user* load_users(const char*);
+void free_users(struct r_user*);
 
 /* rules.c */
-struct r_rule* rules_parse_one(char *rulestr);
+#define LINE_SIZE 16384
+struct r_rule* rule_parse(char *rulestr);
+void rules_free(struct r_rule *rule);
+struct r_rule* parse_rules_file(const char *filename, unsigned int uid);
 #endif

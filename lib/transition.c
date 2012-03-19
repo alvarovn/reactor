@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <sys/types.h>
 
 #include "reactor.h"
 
@@ -39,7 +40,7 @@ struct _transition{
 
 /* Action types */
 struct _cmdaction{
-    int uid;
+    uid_t uid;
     char *shell;
     char *cmd;
 };
@@ -129,7 +130,7 @@ void trans_clist_clear_curr_trans(Transition *clist){
     }
 }
 
-bool trans_set_cmd_action(Transition *trans, const char *cmd, const char *shell, int uid){
+bool trans_set_cmd_action(Transition *trans, const char *cmd, const char *shell, uid_t uid){
     // TODO Check shell value for an existing shell (?)
     // TODO Check uid for an existing user (?)
     CmdAction *cmdactn = NULL;
@@ -142,6 +143,7 @@ bool trans_set_cmd_action(Transition *trans, const char *cmd, const char *shell,
         goto end;
     }
     cmdactn->shell = strdup(shell);
+    cmdactn->cmd = strdup(cmd);
     cmdactn->uid = uid;
     trans->at = CMD;
     trans->typedaction = cmdactn;

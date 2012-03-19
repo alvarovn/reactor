@@ -21,55 +21,51 @@
 #include <string.h>
 #include <stdlib.h>
 #include <grp.h>
+#include <pwd.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <stdbool.h>
 
 #include "reactord.h"
 
-void free_users(User* u){
-    User* uaux;
+void free_users(struct r_user* u){
+    struct r_user* uaux;
     
     if(!u) return;
     
     do{
         uaux = u->next;
-        free(u->name);
         free(u);
     }while(uaux);
 }
 
-static User* load_user(const char* uname){
-    User *u = NULL;
+static struct r_user* load_user(const char* uname){
+    struct r_user *u = NULL;
     
-    if((u = (User *) calloc(1, sizeof(User))) == NULL){
+    if((u = (struct r_user *) calloc(1, sizeof(struct r_user))) == NULL){
         dbg_e("Error on malloc() the user '%s'", uname);
         goto end;
     }
-    if((u->name = strdup(uname)) == NULL){
-        dbg_e("Error copying the user name '%s'", uname);
-        free_users(u);
-        u = NULL;
-        goto end;
-    }
+   u->pw = getpwnam(uname);
 end:
     return u;
 }
 
-User* load_users(const char* grname){
-    User *u, *uaux;
+struct r_user* load_users(const char* grname){
+    struct r_user *u, *uaux;
     struct group *gr;
-    char root;
+    struct passwd *cu;
     char **gmem;
     
     u = NULL;
-    root = FALSE;
+    cu = getpwuid(geteuid());
     if ((gr = getgrnam(grname)) == NULL){
         warn("'%s' group doesn't exist.", grname);
         goto end;
     }
     for(gmem = gr->gr_mem; *gmem != NULL; gmem++){
-        if(!root && str_eq(*gmem, "root"))
-            root=1;
         if((uaux = load_user(*gmem)) == NULL){
-            err("Non-root users loading failure.");
+            err("Users loading failure.");
             free_users(u);
             goto end;
         }
@@ -77,14 +73,6 @@ User* load_users(const char* grname){
         u = uaux;
     }
 end:
-    if(!root){
-        if((uaux = load_user("root")) == NULL) 
-            die("'root' user loading failure.");
-
-        uaux->next = u;
-        u = uaux;
-    }
-
     return u;
 }
 

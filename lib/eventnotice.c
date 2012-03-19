@@ -65,8 +65,8 @@ const char* en_get_id(EventNotice *en) {
     return en->id;
 }
 
-const RSList* en_get_currtrans(EventNotice *en){
-    return en->currtrans;
+const RSList** en_get_currtrans_ref(EventNotice *en){
+    return &en->currtrans;
 }
 
 void en_add_transpointer(EventNotice *en) {
