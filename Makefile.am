@@ -15,16 +15,13 @@ include_HEADERS = lib/libreactor.h
 lib_LTLIBRARIES = lib/libreactor.la
 
 lib_libreactor_la_SOURCES =	lib/libreactor-private.h \
+				lib/log-private.c \
+				lib/cntrl-private.c \
 				lib/cntrl.c
  
 lib_libreactor_la_LDFLAGS =	$(AM_LDFLAGS)
 				-version-info $(LIBREACTOR_CURRENT):$(LIBREACTOR_REVISION):$(LIBREACTOR_AGE)
 
-noinst_LTLIBRARIES = lib/libreactor-private.la
-
-lib_libreactor_private_la_SOURCES =	$(lib_libudev_la_SOURCES) \
-					lib/cntrl-private.c \
-					lib/log-private.c
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = lib/libreactor.pc
 
@@ -36,17 +33,15 @@ src_common_sources =	src/reactor.h
 				
 
 src_reactord_SOURCES =	$(src_common_sources) \
-				src/reactord.c \
-				src/user.c \
-				src/rules.c \
-				src/eventnotice.c \
-				src/state.c \
-				src/transition.c
-src_reactord_LDADD =	lib/libreactor-private.la \
-			lib/libreactor.la
+			src/reactord.c \
+			src/user.c \
+			src/rules.c \
+			src/eventnotice.c \
+			src/state.c \
+			src/transition.c
+src_reactord_LDADD =	lib/libreactor.la
 
 src_reactorctl_SOURCES =	$(reactor_common_sources) \
 				src/reactorctl.c
 
-src_reactorctl_LDADD =	lib/libreactor-private.la \
-			lib/libreactor.la
+src_reactorctl_LDADD =	lib/libreactor.la
