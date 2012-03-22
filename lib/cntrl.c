@@ -18,24 +18,12 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#include <stdlib.h>
-#include <string.h>
+#include "libreactor.h"
+#include "libreactor-private.h"
+
 #include <sys/un.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <stdbool.h>
 #include <arpa/inet.h>
-
-#include "reactord.h"
-
-typedef struct _cntrl{
-    struct sockaddr_un saddr;
-    int sfd;
-    int psfd;
-    bool listening;
-    bool server;
-    bool connected;
-}Cntrl;
+#include <unistd.h>
 
 int cntrl_send_msg(Cntrl *cntrl, const struct r_msg *msg){
     int error;
@@ -127,42 +115,8 @@ void cntrl_free(Cntrl *cntrl){
     free(cntrl);
 }
 
-Cntrl* cntrl_new(bool server){
-    Cntrl *cntrl;
-    int *sfd;
-    
-    if((cntrl = (Cntrl *) calloc(1, sizeof(Cntrl))) == NULL) {
-        dbg_e("Error on malloc() the Cntrl struct.", NULL);
-        goto error;
-    }
-    if(server) sfd = &cntrl->sfd;
-    else sfd = &cntrl->psfd;
-    
-    *sfd = socket(AF_UNIX, SOCK_STREAM, 0);
-    
-    if(*sfd  == -1){
-        dbg_e("Error creating control socket file descriptor.", NULL);
-        goto error;
-    }
-    
-    cntrl->listening = false;
-    cntrl->server = false;
-    cntrl->connected = false;
-    cntrl->saddr.sun_family = AF_UNIX;
-    strncpy(cntrl->saddr.sun_path, SOCK_PATH, sizeof(cntrl->saddr.sun_path)-1);
-    
-    if(server){
-        cntrl->server = true;
-        unlink(cntrl->saddr.sun_path);
-        if(bind(*sfd, (struct sockaddr *) &cntrl->saddr, sizeof(struct sockaddr_un)) == -1){
-            dbg_e("Control socket can't be bound. Probably a permissions issue.", NULL);
-            goto error;
-        }
-    }
-    return cntrl;
-error:
-    cntrl_free(cntrl);
-    return NULL;
+Cntrl* cntrl_cl_new(){
+    return cntrl_new(false);
 }
 
 int cntrl_connect(Cntrl *cntrl){
@@ -180,27 +134,6 @@ int cntrl_connect(Cntrl *cntrl){
         error = -1;
         goto end;
     }
-end:
-    return error;
-}
-
-int cntrl_listen(Cntrl* cntrl){
-    int error = 0;
-    const int BACKLOG = 5;
-//     int sopt = 1;
-    if(cntrl == NULL){
-        dbg("NULL cntrl to make listen.", NULL);
-        error = -1;
-        goto end;
-    }
-    /* TODO Backlog is 5 as a random number, change it to make sense */
-    if(listen(cntrl->sfd, BACKLOG) == -1){
-        dbg_e("Control socket listening failed.", NULL);
-        error = -1;
-        goto end;
-    }
-//     setsockopt(cntrl->sfd, SOL_SOCKET, SO_PASSCRED, &sopt, sizeof(sopt));
-    cntrl->listening = true;
 end:
     return error;
 }

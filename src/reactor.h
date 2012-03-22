@@ -21,13 +21,10 @@
 #ifndef REACTOR_H_INCLUDED
 #define REACTOR_H_INCLUDED
 
-#include "reactor.h"
+#include "libreactor.h"
+#include "libreactor-private.h"
 
 #include <sys/types.h>
-
-/* TODO Socket must be changed to a secure path */
-
-#define SOCK_PATH "/tmp/rctlsock"
 
 /* TODO Group should be defined on a configuration file */
 
@@ -51,7 +48,7 @@ struct r_rule{
     char *to; 
     char *from;
     unsigned int line;
-    /* Doubly linked list */
+    /* Linked list */
     struct r_rule* next;
 };
 
@@ -63,40 +60,7 @@ struct r_event{
      */ 
 //     pid_t fontpid;  
 };
-
-enum rmsg_type{
-    /* to server */
-    REACTOR_EVENT,
-    RULE,
-    /* from server */
-    ACK,
-    RULE_NOFROM,
-    RULE_MULTINIT,
-    RULE_MALFORMED
-};
-
-struct rmsg_hd{
-    int size;
-    enum rmsg_type mtype;
-};
-
-struct r_msg{
-    struct rmsg_hd hd;
-    char *msg;
-};
-
-/* cntrl.c */
-typedef struct _cntrl Cntrl;
-
-int cntrl_send_msg(Cntrl *cntrl, const struct r_msg *msg);
-void cntrl_peer_close(Cntrl *cntrl);
-struct r_msg* cntrl_receive_msg(Cntrl *cntrl);
-void cntrl_free(Cntrl *cntrl);
-Cntrl* cntrl_new(bool server);
-int cntrl_listen(Cntrl* cntrl);
-int cntrl_connect(Cntrl *cntrl);
-int cntrl_get_fd(Cntrl *cntrl);
-
+typedef struct _transition Transition;
 
 /* user.c */
 struct r_user{
@@ -112,4 +76,49 @@ void free_users(struct r_user*);
 struct r_rule* rule_parse(char *rulestr);
 void rules_free(struct r_rule *rule);
 struct r_rule* parse_rules_file(const char *filename, unsigned int uid);
+/* eventnotice.c */
+
+typedef struct _eventnotice EventNotice;
+
+EventNotice* en_new(const char* id);
+bool en_free(EventNotice *en);
+void en_add_curr_trans(EventNotice *en, Transition *trans);
+void en_clear_curr_trans(EventNotice *en);
+const char* en_get_id(EventNotice *en);
+void en_add_transpointer(EventNotice *en);
+const RSList** en_get_currtrans_ref(EventNotice *en);
+void en_remove_one_curr_trans(EventNotice *en, Transition *trans);
+/* state.c */
+
+typedef struct _state State;
+
+State* state_new(const char* id);
+bool state_free(State *ste);
+void state_add_trans(State *ste, Transition *trans);
+const char* state_get_id(State *ste);
+void state_add_transpointer(State *ste);
+Transition* state_get_trans(State *ste);
+void state_set_fsminitial(State *ste, Transition *fsminitial);
+Transition* state_get_fsminitial(State *ste);
+/* transition.c */
+
+typedef enum _actiontypes{
+    NONE,
+    CMD
+}ActionTypes;
+typedef struct _cmdaction CmdAction;
+
+Transition* trans_new(State *dest);
+bool trans_set_cmd_action(Transition* trans, const char* cmd, const char* shell, uid_t uid);
+void trans_set_none_action(Transition *trans);
+void trans_free(Transition *trans);
+bool trans_notice_event(Transition *trans);
+void trans_add_requisite(Transition *trans, EventNotice *en);
+const State* trans_get_dest(Transition *trans);
+const RSList* trans_get_enrequisites(Transition *trans);
+Transition* trans_clist_merge(Transition* clist1, Transition* clist2);
+Transition* trans_clist_remove_link(Transition* trans);
+void trans_clist_free_full(Transition* trans);
+Transition* trans_clist_next(Transition *clist);
+void trans_clist_clear_curr_trans(Transition *clist);
 #endif

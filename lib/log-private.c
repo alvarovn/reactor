@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#include "reactor.h"
+#include "libreactor-private.h"
 
 static bool logopen = false;
 static char msg[MAX_LENGTH];

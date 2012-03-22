@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <getopt.h>
 
-#include "reactord.h"
+#include "reactor.h"
 
 #define TRANS_COUNT 6
 
@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
     
     cntrl = cntrl_new(false);
     if(cntrl_connect(cntrl) == -1){
-        warn("reactord is not running. Start reactord.");
+        warn("reactord is not running. Start reactord");
         return 1;
     }
     for(opt = getopt_long( argc, argv, optstring, options, &optindex );

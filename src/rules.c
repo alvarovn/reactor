@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "reactord.h"
+#include "reactor.h"
 
 void rules_free(struct r_rule* rule){
     for(; rule != NULL; rule = rule->next){

@@ -18,19 +18,20 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#ifndef REACTOR_INCLUDED
-#define REACTOR_INCLUDED
+#ifndef LIBREACTOR_PRIVATE_INCLUDED
+#define LIBREACTOR_PRIVATE_INCLUDED
 
 #include <string.h>
 #include <stdbool.h>
 #include <sys/types.h>
 #include <glib.h>
+#include <sys/un.h>
 
-typedef struct _transition Transition;
+#include "libreactor.h"
 
-static inline bool str_eq(const char *s1, const char *s2){
-    return !strcmp(s1, s2);
-}
+/* TODO Socket must be changed to a secure path */
+
+#define SOCK_PATH "/tmp/rctlsock"
 
 /* basic third party data structures wrappers */
 
@@ -136,50 +137,16 @@ void l_debug_e(const char *format, ...) PRINTF_ATTR(1, 2);
 
 #endif/* !DEBUG */
 
-/* eventnotice.c */
+/* cntrl-private.c */
+typedef struct _cntrl{
+    struct sockaddr_un saddr;
+    int sfd;
+    int psfd;
+    bool listening;
+    bool server;
+    bool connected;
+}Cntrl;
 
-typedef struct _eventnotice EventNotice;
-
-EventNotice* en_new(const char* id);
-bool en_free(EventNotice *en);
-void en_add_curr_trans(EventNotice *en, Transition *trans);
-void en_clear_curr_trans(EventNotice *en);
-const char* en_get_id(EventNotice *en);
-void en_add_transpointer(EventNotice *en);
-const RSList** en_get_currtrans_ref(EventNotice *en);
-void en_remove_one_curr_trans(EventNotice *en, Transition *trans);
-/* state.c */
-
-typedef struct _state State;
-
-State* state_new(const char* id);
-bool state_free(State *ste);
-void state_add_trans(State *ste, Transition *trans);
-const char* state_get_id(State *ste);
-void state_add_transpointer(State *ste);
-Transition* state_get_trans(State *ste);
-void state_set_fsminitial(State *ste, Transition *fsminitial);
-Transition* state_get_fsminitial(State *ste);
-/* transition.c */
-
-typedef enum _actiontypes{
-    CMD,
-    NONE
-}ActionTypes;
-typedef struct _cmdaction CmdAction;
-
-Transition* trans_new(State *dest);
-bool trans_set_cmd_action(Transition* trans, const char* cmd, const char* shell, uid_t uid);
-void trans_set_none_action(Transition *trans);
-void trans_free(Transition *trans);
-bool trans_notice_event(Transition *trans);
-void trans_add_requisite(Transition *trans, EventNotice *en);
-const State* trans_get_dest(Transition *trans);
-const RSList* trans_get_enrequisites(Transition *trans);
-Transition* trans_clist_merge(Transition* clist1, Transition* clist2);
-Transition* trans_clist_remove_link(Transition* trans);
-void trans_clist_free_full(Transition* trans);
-Transition* trans_clist_next(Transition *clist);
-void trans_clist_clear_curr_trans(Transition *clist);
-
+int cntrl_listen(Cntrl* cntrl);
+Cntrl* cntrl_new(bool server);
 #endif
