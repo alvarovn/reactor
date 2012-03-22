@@ -103,8 +103,8 @@ Transition* state_get_fsminitial(State *ste);
 /* transition.c */
 
 typedef enum _actiontypes{
-    CMD,
-    NONE
+    NONE,
+    CMD
 }ActionTypes;
 typedef struct _cmdaction CmdAction;
 
