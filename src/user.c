@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 
-#include "reactord.h"
+#include "reactor.h"
 
 void free_users(struct r_user* u){
     struct r_user* uaux;

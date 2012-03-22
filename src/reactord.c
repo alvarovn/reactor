@@ -25,7 +25,7 @@
 #include <event.h>
 #include <pwd.h>
 
-#include "reactord.h"
+#include "reactor.h"
 
 #define SOCK_BUFF_SIZE 1024
 

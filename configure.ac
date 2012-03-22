@@ -2,21 +2,23 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.68])
-AC_INIT([reactor], [0.0], [vn.alvaro@gmail.com])
+AC_INIT([reactor], [0.1.0], [vn.alvaro@gmail.com])
 AC_CONFIG_SRCDIR([src/reactord.c])
 AC_CONFIG_HEADERS([config.h])
 
 AM_INIT_AUTOMAKE([foreign 1.11 -Wall -Wno-portability silent-rules tar-pax subdir-objects dist-bzip2])
 
 AC_CANONICAL_HOST
-
 # Checks for programs.
 ##AC_PROG_AWK
 AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
+AC_PROG_LIBTOOL
 #AC_PROG_RANLIB
+LT_INIT([])
+AC_PREFIX_DEFAULT([/usr])
 
 #Check for _GNU_SOURCE
 ##AC_USE_SYSTEM_EXTENSIONS
@@ -52,5 +54,5 @@ AC_ARG_ENABLE(debug,
 AM_CONDITIONAL(ENABLE_DEBUG, test "$enable_debug" = "yes")
 CFLAGS="$DEBUG_CFLAGS"
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile lib/libreactor.pc])
 AC_OUTPUT
