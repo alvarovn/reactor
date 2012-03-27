@@ -27,7 +27,7 @@
 struct _eventnotice {
     char *id;
     RSList *currtrans;
-    unsigned int ntranspointers;
+    unsigned int refcount;
 };
 
 EventNotice* en_new(const char* id) {
@@ -43,8 +43,8 @@ end:
     return en;
 }
 
-bool en_free(EventNotice *en) {
-    if (en->ntranspointers-- > 0) return false;
+bool en_unref(EventNotice *en) {
+    if (en->refcount-- > 0) return false;
 
     reactor_slist_free(en->currtrans);
     free(en->id);
@@ -69,8 +69,9 @@ const RSList** en_get_currtrans_ref(EventNotice *en){
     return &en->currtrans;
 }
 
-void en_add_transpointer(EventNotice *en) {
-    en->ntranspointers++;
+void en_ref(EventNotice *en) {
+    if(en == NULL) return;
+    en->refcount++;
 }
 
 void en_remove_one_curr_trans(EventNotice *en, Transition *trans){

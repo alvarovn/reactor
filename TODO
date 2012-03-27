@@ -1,1 +1,11 @@
 - Alternative log output to syslog
+
+- Transitions that will never be executed again should be freed.
+
+- SELinux.
+
+- ref & unref for eventnotice and state.
+
+- Change transpointers to refcount.
+
+- Check udev-ctrl.c -> ctrl_send()

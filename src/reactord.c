@@ -87,14 +87,8 @@ static enum rmsg_type reactor_rule_handler(struct r_rule *rule){
     /* TODO     While we don't get from the event the shell to execute 
      *          the command, we should get the current shell and use it.
      */
-    if(rule->action == NULL){
-        trans_set_none_action(trans);
-    }
-    else{
-        /* TODO Use current shell */
-        trans_set_cmd_action(trans, rule->action, "/bin/sh", rule->uid);
-    }
-    
+    trans_set_action(trans, rule->raction);
+
     for(; rule->enids != NULL; rule->enids = reactor_slist_next(rule->enids)){
         en = (EventNotice *) reactor_hash_table_lookup(eventnotices, rule->enids->data);
         if(en == NULL){
@@ -102,7 +96,7 @@ static enum rmsg_type reactor_rule_handler(struct r_rule *rule){
             reactor_hash_table_insert(eventnotices, rule->enids->data, en);
         }
         trans_add_requisite(trans, en);
-        en_add_transpointer(en);
+        en_ref(en);
         /* As it is an initial transition it should also be a current transition */
         if(init)en_add_curr_trans(en, trans);
 
@@ -195,7 +189,8 @@ static void receive_msg(int fd, short ev, void *arg){
             free((char *)data);
             break;
         case RULE:
-            data = (void *) rule_parse(msg->msg);
+            /* TODO Change uid to the user who sent the rule */
+            data = (void *) rule_parse(msg->msg, 0);
             response.hd.mtype = reactor_rule_handler((struct r_rule *) data);
             cntrl_send_msg(cntrl, &response);
             free(msg->msg);

@@ -31,33 +31,11 @@ struct _transition{
     unsigned int noticedevents;
     unsigned int eventnotices;
     State* dest;
-    ActionTypes at;
-    void *typedaction;
+    struct r_action *raction;
     /* Transition circular list */
     Transition *clistnext;
     Transition *clistprev;
 };
-
-/* Action types */
-struct _cmdaction{
-    uid_t uid;
-    char *shell;
-    char *cmd;
-};
-
-static void cmd_action_free(CmdAction *cmdactn){
-    free(cmdactn->cmd);
-    free(cmdactn->shell);
-    free(cmdactn);
-}
-static void trans_action_free(Transition *trans){
-    switch(trans->at){
-        case CMD:
-            trans->at = NONE;
-            cmd_action_free((CmdAction *) trans->typedaction);
-            break;
-    }
-}
 
 Transition* trans_new(State *dest){
     Transition *trans = NULL;
@@ -69,7 +47,7 @@ Transition* trans_new(State *dest){
     trans->dest = dest;
     trans->clistnext = trans;
     trans->clistprev = trans;
-    trans->at = NONE;
+    trans->raction = NULL;
 end:
     return trans;
 }
@@ -93,7 +71,7 @@ end:
 Transition* trans_clist_remove_link(Transition* trans){
     Transition *ret;
     
-    if(trans == trans->clistnext) return;
+    if(trans == trans->clistnext) return NULL;
     ret = trans->clistnext;
     trans->clistnext->clistprev = trans->clistprev;
     trans->clistprev->clistnext = trans->clistnext;
@@ -130,59 +108,21 @@ void trans_clist_clear_curr_trans(Transition *clist){
     }
 }
 
-bool trans_set_cmd_action(Transition *trans, const char *cmd, const char *shell, uid_t uid){
+bool trans_set_action(Transition *trans, struct r_action *action){
     // TODO Check shell value for an existing shell (?)
     // TODO Check uid for an existing user (?)
-    CmdAction *cmdactn = NULL;
     bool success = true;
     
-    trans_action_free(trans);
-    if((cmdactn = (CmdAction *) calloc(1, sizeof(CmdAction))) == NULL){
-        dbg_e("Error on malloc() the new command action'", NULL);
-        success = false;
-        goto end;
-    }
-    cmdactn->shell = strdup(shell);
-    cmdactn->cmd = strdup(cmd);
-    cmdactn->uid = uid;
-    trans->at = CMD;
-    trans->typedaction = cmdactn;
+    action_free(trans->raction);
+    trans->raction = action;
 end:
     return success;
 }
 
-void trans_set_none_action(Transition *trans){
-    trans_action_free(trans);
-}
-
 void trans_free(Transition *trans){
     reactor_slist_free(trans->enrequisites);
-    trans_action_free(trans);
+    action_free(trans->raction);
     free(trans);
-    
-}
-
-static void cmd_execute(CmdAction *cmd){
-    // TODO Create a fork to monitor the execution
-    
-    switch (fork()) {
-        case -1:
-            err("Unable to fork, command won't be executed.");
-            break;
-        case 0:
-            /* child process */
-            if(setuid(cmd->uid) < 0){
-                err("Commands can't be executed as user '%i'.", cmd->uid);
-            }
-            execl(cmd->shell, cmd->shell, "-c", cmd->cmd, NULL);
-            
-            /* If everything goes fine, it will never arrive here */
-            err("Unable to execute the shell command '%s'", cmd->shell);
-            break;
-        default:
-            /* parent process */
-            break;
-    }
     
 }
 
@@ -190,14 +130,7 @@ bool trans_notice_event(Transition *trans){
     if(++trans->noticedevents < trans->eventnotices)
         return false;
     /* If all the required events happened then we must execute the action */
-    switch(trans->at){
-        case CMD:
-            cmd_execute((CmdAction *) trans->typedaction);
-            break;
-        default:
-            /* CMD_NONE */
-            break;
-    }
+    action_do(trans->raction);
     trans->noticedevents = 0;
     return true;
 }

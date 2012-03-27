@@ -23,20 +23,27 @@
 #include <stdbool.h>
 
 #include "reactor.h"
+#include <stdlib.h>
 
 void rules_free(struct r_rule* rule){
-    for(; rule != NULL; rule = rule->next){
-        free(rule->action);
-        reactor_slist_free_full(rule->enids, free);
+    struct r_rule *aux;
+    
+    for(; rule != NULL; ){
+//         reactor_slist_free_full(rule->enids, free);
         free(rule->from);
         free(rule->to);
+//         action_free(rule->raction);
+        aux = rule->next;
+        free(rule);
+        rule = aux;
     }
 }
 /*
  * Restricted characters:
  * '-', '&' and '#'
+ * TODO This function needs refactor
  */
-struct r_rule* rule_parse(char *rulestr){
+struct r_rule* rule_parse(char *rulestr, uid_t uid){
     struct r_rule * rule;
     char *token, *tkaux;
     int tokenlength;
@@ -52,6 +59,7 @@ struct r_rule* rule_parse(char *rulestr){
         rule->to == NULL;
         return rule;
     }
+    /* From state */
     if(*token == '-'){
         rule->from = NULL;
         token+=sizeof(char);
@@ -72,6 +80,7 @@ struct r_rule* rule_parse(char *rulestr){
         rule->from = strndup(token, tokenlength);
         token += tokenlength;
     }
+    /* To state */
     skip_blanks(token);
     tokenlength = 0;
     skip_noblanks(token, tokenlength);
@@ -91,6 +100,7 @@ struct r_rule* rule_parse(char *rulestr){
         *token == '\n'){
             goto syntax_error;
     }
+    /* Event notice ids */
     token -= sizeof(char);
     do{
         token += sizeof(char);
@@ -105,19 +115,70 @@ struct r_rule* rule_parse(char *rulestr){
         token += tokenlength;
         skip_blanks(token);
     }while(*token == '&');
-
-    if( *token == '\0' || *token == '#' || *token == '\n' ) {
-        rule->action = NULL;
-        return rule;
+    /* Action */
+    if( *token == '\0' || 
+        *token == '&' || 
+        *token == '#' ||
+        *token == '\n'){
+            goto syntax_error;
     }
     tokenlength = 0;
-    while(token[tokenlength] != '\0' && token[tokenlength] != '#' && token[tokenlength] != '\n' ){
-        tokenlength++;
+    skip_noblanks(token, tokenlength);
+    if(!strncmp("NONE", token, tokenlength)){
+        token += tokenlength;
         skip_blanks(token);
-        skip_noblanks(token, tokenlength);
+        if(*token != '\0') goto syntax_error;
+        rule->raction = action_new(NONE);
+        goto end;
     }
-    rule->action = strndup(token, tokenlength);
-    
+    if(!strncmp("CMD", token, tokenlength)){
+        token += tokenlength;
+        skip_blanks(token);
+        if( *token == '\0' ||
+            *token == '&' ||
+            *token == '#' || 
+            *token == '\n' ){
+               goto syntax_error; 
+        }
+        tokenlength = 0;
+        while(token[tokenlength] != '\0' && token[tokenlength] != '#' && token[tokenlength] != '\n' ){
+            tokenlength++;
+            skip_blanks(token);
+            skip_noblanks(token, tokenlength);
+        }
+        rule->raction = action_new(CMD);
+        action_cmd_set_cmd(rule->raction, strndup(token, tokenlength));
+        goto end;
+    }
+    if(!strncmp("PROP", token, tokenlength)){
+        token += tokenlength;
+        skip_blanks(token);
+        if( *token == '\0' ||
+            *token == '&' ||
+            *token == '#' || 
+            *token == '\n' ){
+               goto syntax_error; 
+        }
+        tokenlength = 1;
+        while(token[tokenlength] != ':' && token[tokenlength] != '\0') 
+            tokenlength++;
+        rule->raction = action_new(PROP);
+        action_prop_set_addr(rule->raction, strndup(token, tokenlength));
+        action_prop_set_enids(rule->raction, rule->enids);
+        if(token[tokenlength] == '\0'){
+            action_prop_set_port(rule->raction, REACTOR_PORT);
+            goto end;
+        }
+        token += tokenlength;
+        skip_blanks(token);
+        tokenlength = 0;
+        while(token[tokenlength] != '\0' && token[tokenlength] != ' '){
+            tokenlength++;
+        }
+        token[tokenlength] = '\0';
+        action_prop_set_port(rule->raction, atoi(token));
+    }
+end:    
     return rule;
 syntax_error:
     rules_free(rule);
@@ -160,7 +221,7 @@ struct r_rule* parse_rules_file(const char *filename, unsigned int uid){
             err("Line too long '%s':%u, ignored", filename, linecount);
             continue;
         }
-        rule = rule_parse(line);
+        rule = rule_parse(line, uid);
         /* Syntax error */
         if(rule == NULL){
             warn("Syntax error '%s':%u, ignored", filename, linecount);
@@ -168,7 +229,6 @@ struct r_rule* parse_rules_file(const char *filename, unsigned int uid){
         }
         /* Commented line */
         if(rule->to == NULL) continue;
-        rule->uid = uid;
         if(head == NULL || tail == NULL) {
             head = rule;
             tail = rule;
