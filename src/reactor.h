@@ -38,9 +38,13 @@
                 c+=sizeof(char);
             
 #define skip_noblanks(c, i) \
-            while (c[i] != '\n' && c[i] != '\t' && c[i] != ' ' && c[i] != '&' && c[i] != '#' && c[i] != '-' && c[i] != '\0') \
+            while (c[i] != '\n' && c[i] != '\t' && c[i] != ' ' && c[i] != '&' && c[i] != '#' && c[i] != '\0') \
                 i++;
             
+struct reactor_d{
+    GHashTable *eventnotices;
+    GHashTable *states;
+};
 enum a_types{
     NONE,
     CMD,
@@ -101,8 +105,8 @@ struct r_rule* parse_rules_file(const char *filename, unsigned int uid);
 
 typedef struct _eventnotice EventNotice;
 
-EventNotice* en_new(const char* id);
-bool en_unref(EventNotice *en);
+EventNotice* en_new(struct reactor_d *reactor, const char* id);
+void en_unref(struct reactor_d *reactor, EventNotice *en);
 void en_add_curr_trans(EventNotice *en, Transition *trans);
 void en_clear_curr_trans(EventNotice *en);
 const char* en_get_id(EventNotice *en);
@@ -113,29 +117,30 @@ void en_remove_one_curr_trans(EventNotice *en, Transition *trans);
 
 typedef struct _state State;
 
-State* state_new(const char* id);
-bool state_free(State *ste);
+State* state_new(struct reactor_d *reactor, const char* id);
+void state_unref(struct reactor_d *reactor, State *ste);
 void state_add_trans(State *ste, Transition *trans);
 const char* state_get_id(State *ste);
-void state_add_transpointer(State *ste);
+void state_ref(State *ste);
 Transition* state_get_trans(State *ste);
-void state_set_fsminitial(State *ste, Transition *fsminitial);
-Transition* state_get_fsminitial(State *ste);
+void state_set_fsminitial(State *ste, State *fsminitial);
+State* state_get_fsminitial(State *ste);
 /* transition.c */
 typedef struct cmd_action;
 
 Transition* trans_new(State *dest);
 bool trans_set_action(Transition *trans, struct r_action *action);
-void trans_free(Transition *trans);
+Transition* trans_clist_free(struct reactor_d *reactor, Transition *trans);
 bool trans_notice_event(Transition *trans);
 void trans_add_requisite(Transition *trans, EventNotice *en);
 const State* trans_get_dest(Transition *trans);
 const RSList* trans_get_enrequisites(Transition *trans);
 Transition* trans_clist_merge(Transition* clist1, Transition* clist2);
 Transition* trans_clist_remove_link(Transition* trans);
-void trans_clist_free_full(Transition* trans);
+// void trans_clist_free_full(struct reactor_d *reactor, Transition* trans);
 Transition* trans_clist_next(Transition *clist);
 void trans_clist_clear_curr_trans(Transition *clist);
+void state_set_trans(State *ste, Transition *trans);
 /* action.c */
 
 struct r_action* action_new(enum a_types atype);

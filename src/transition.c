@@ -45,6 +45,7 @@ Transition* trans_new(State *dest){
         goto end;
     }
     trans->dest = dest;
+    state_ref(dest);
     trans->clistnext = trans;
     trans->clistprev = trans;
     trans->raction = NULL;
@@ -70,26 +71,24 @@ end:
 
 Transition* trans_clist_remove_link(Transition* trans){
     Transition *ret;
-    
     if(trans == trans->clistnext) return NULL;
     ret = trans->clistnext;
-    trans->clistnext->clistprev = trans->clistprev;
+    ret->clistprev = trans->clistprev;
     trans->clistprev->clistnext = trans->clistnext;
     trans->clistnext = trans;
     trans->clistprev = trans;
-    return trans->clistnext;
+    return ret;
 }
 
-void trans_clist_free_full(Transition *trans){
-    Transition *aux;
-    
-    for(;trans->clistnext == trans;){
-      aux = trans;
-      trans = trans_clist_remove_link(trans);
-      trans_free(aux);
-    }
-    trans_free(trans);
-}
+// void trans_clist_free_full(struct reactor_d *reactor, Transition *trans){
+//     Transition *aux;
+//     
+//     for(;trans != NULL;){
+//         aux = trans;
+//         trans = trans_clist_remove_link(trans);
+//         trans_free(reactor, aux);
+//     }
+// }
 
 Transition* trans_clist_next(Transition *clist){
     return clist->clistnext;
@@ -119,11 +118,18 @@ end:
     return success;
 }
 
-void trans_free(Transition *trans){
-    reactor_slist_free(trans->enrequisites);
+Transition* trans_clist_free(struct reactor_d *reactor, Transition *trans){
+    Transition *ret;
+    reactor_slist_foreach(trans->enrequisites, en_remove_one_curr_trans, trans);
+    while(trans->enrequisites != NULL){
+        en_unref(reactor, trans->enrequisites->data);
+        trans->enrequisites = reactor_slist_delete_link(trans->enrequisites, trans->enrequisites);
+    }
     action_free(trans->raction);
+    ret = trans_clist_remove_link(trans);
+    state_unref(reactor, trans->dest);
     free(trans);
-    
+    return;
 }
 
 bool trans_notice_event(Transition *trans){
@@ -137,6 +143,7 @@ bool trans_notice_event(Transition *trans){
 
 void trans_add_requisite(Transition *trans, EventNotice *en){
     trans->enrequisites = reactor_slist_prepend(trans->enrequisites, en);
+    en_ref(en);
     trans->eventnotices++;
 }
 

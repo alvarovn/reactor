@@ -33,13 +33,13 @@ static inline bool str_eq(const char *s1, const char *s2){
 /* cntrl.c */
 enum rmsg_type{
     /* to server */
-    REACTOR_EVENT,
-    RULE,
+    EVENT,
+    ADD_RULE,
+    RM_TRANS,
     /* from server */
     ACK,
-    RULE_NOFROM,
     RULE_MULTINIT,
-    RULE_MALFORMED
+    ARG_MALFORMED
 };
 
 struct rmsg_hd{

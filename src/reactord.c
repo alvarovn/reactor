@@ -24,20 +24,20 @@
 #include <sys/types.h>
 #include <event.h>
 #include <pwd.h>
+#include <stdlib.h>
 
 #include "reactor.h"
 
 #define SOCK_BUFF_SIZE 1024
 
-GHashTable *eventnotices;
-GHashTable *states;
+struct reactor_d reactor;
 Cntrl *cntrl;
 
 // TODO signal handlers
 
 /* control messages handlers */
 
-static enum rmsg_type reactor_rule_handler(struct r_rule *rule){
+static enum rmsg_type reactor_add_rule_handler(struct r_rule *rule){
     Transition *trans, *fsminitial = NULL;
     State *from, *to = NULL;
     EventNotice *en = NULL;
@@ -45,67 +45,54 @@ static enum rmsg_type reactor_rule_handler(struct r_rule *rule){
     enum rmsg_type cmt = ACK;
     
     if(rule == NULL){
+        cmt = ARG_MALFORMED;
         warn("Rule malformed.");
-        cmt = RULE_MALFORMED;
         goto end;
     }
-    if(rule->to == NULL){
-        goto end;
+        
+    init = (from = (State *) reactor_hash_table_lookup(reactor.states, rule->from)) == NULL;
+    if(init){
+        from = state_new(&reactor, rule->from);
+//         state_set_fsminitial(from, from);
     }
     
-    init = rule->from == NULL || *(rule->from) == NULL;
-    
-    if(!init){
-        from = (State *) reactor_hash_table_lookup(states, rule->from);
-        if(from == NULL){
-            warn("Origin state '%s' must exist and it doesn't. The transition won't be added.", rule->from);
-            cmt = RULE_NOFROM;
-            goto end;
-        }
-    }
-    
-    to = (State *) reactor_hash_table_lookup(states, rule->to);
+    to = (State *) reactor_hash_table_lookup(reactor.states, rule->to);
     if(to == NULL) {
-        to = state_new(rule->to);
-        reactor_hash_table_insert(states, state_get_id(to), to);
+        to = state_new(&reactor, rule->to);
+        fsminitial = (state_get_fsminitial(from) == NULL) ? from : state_get_fsminitial(from);
+        state_set_fsminitial(to, fsminitial);
     }
     else{
-        if(init || state_get_fsminitial(from) != state_get_fsminitial(to)){
-            /* User is trying to put multiple initial transitions to the same state machine */
+        if( (state_get_fsminitial(from) != state_get_fsminitial(to)) && 
+            (state_get_fsminitial(from) != to)){
             /* TODO Make a copy of the portion of the state machine that they will share */ 
             warn("Trying to set multiple initial transitions to the same state machine. The transition won't be added.");
             cmt = RULE_MULTINIT;
             goto end;
         }
     }
-      
-    
     trans = trans_new(to);
-    state_add_transpointer(to);
-    if(init) state_set_fsminitial(to, trans);
-    else state_set_fsminitial(to, state_get_fsminitial(from));
     /* TODO     While we don't get from the event the shell to execute 
      *          the command, we should get the current shell and use it.
      */
     trans_set_action(trans, rule->raction);
 
     for(; rule->enids != NULL; rule->enids = reactor_slist_next(rule->enids)){
-        en = (EventNotice *) reactor_hash_table_lookup(eventnotices, rule->enids->data);
+        en = (EventNotice *) reactor_hash_table_lookup(reactor.eventnotices, rule->enids->data);
         if(en == NULL){
-            en = en_new(rule->enids->data);
-            reactor_hash_table_insert(eventnotices, rule->enids->data, en);
+            en = en_new(&reactor, rule->enids->data);
         }
         trans_add_requisite(trans, en);
-        en_ref(en);
         /* As it is an initial transition it should also be a current transition */
-        if(init)en_add_curr_trans(en, trans);
-
+        if(init) en_add_curr_trans(en, trans);
     }
-    if(init) info("New initial transition to state '%s'.", rule->to);
+    if(init){
+        info("New transition from initial state '%s' to state '%s'.", rule->from, rule->to);
+    }
     else{
-        state_add_trans(from, trans);
         info("New transition from state '%s' to state '%s'.", rule->from, rule->to);
     }
+    state_add_trans(from, trans);
 end:
     return cmt;
 }
@@ -123,7 +110,7 @@ static int reactor_event_handler(const char *msg){
                 *transindex = NULL;
     
     error = 0;
-    en = (EventNotice *) reactor_hash_table_lookup(eventnotices, msg);
+    en = (EventNotice *) reactor_hash_table_lookup(reactor.eventnotices, msg);
     if(en == NULL) {
         info("Unknown event '%s' happened.", msg);
         error = -1;
@@ -166,6 +153,41 @@ end:
     return error;
 }
 
+static enum rmsg_type reactor_rm_trans_handler(char *msg){
+    int msgln = 0, 
+        msgp = 0, 
+        transnum,
+        i = 0;
+    char *transnumend;
+    Transition  *trans;
+    State *state;
+    enum rmsg_type rmt = ACK;
+    /* TODO Not the most efficient way to find the last '.' if any. Fix it. */
+    msgln = strlen(msg);
+    for(msgp = msgln-1; (msg[msgp] != '.') && (msgp > 0); msgp--);
+    if (msgp <= 0 || msgp >= msgln-1){
+        goto malformed;
+    }
+    transnum = (int) strtol(&msg[msgp+1], &transnumend, 10);
+    if( *transnumend != NULL || transnum <= 0 ){
+        goto malformed;
+    }
+    info("Removing transition %s...", msg);
+    msg[msgp] = '\0';
+    state = reactor_hash_table_lookup(reactor.states, (void *) msg);
+    msg[msgp] = '.';
+    trans = state_get_trans(state);
+    for (i = 1; i < transnum; i++){
+        trans = trans_clist_next(trans);
+    }
+    trans_clist_remove_link(trans);
+    state_set_trans(state, trans_clist_free(&reactor, trans));
+    info("Transition %s removed", msg);
+    return rmt;
+malformed:
+    return ARG_MALFORMED;
+}
+
 /* libevent control socket callback */
 
 static void receive_msg(int fd, short ev, void *arg){
@@ -181,21 +203,23 @@ static void receive_msg(int fd, short ev, void *arg){
         goto end;
     }
     switch(msg->hd.mtype){
-        case REACTOR_EVENT:
-            data = (void *) strdup(msg->msg);
-            reactor_event_handler((char *) data);
+        case EVENT:
+            reactor_event_handler(msg->msg);
             cntrl_send_msg(cntrl, &response);
             free(msg->msg);
-            free((char *)data);
             break;
-        case RULE:
+        case ADD_RULE:
             /* TODO Change uid to the user who sent the rule */
             data = (void *) rule_parse(msg->msg, 0);
-            response.hd.mtype = reactor_rule_handler((struct r_rule *) data);
+            response.hd.mtype = reactor_add_rule_handler((struct r_rule *) data);
+            rules_free((struct r_rule *) data);
             cntrl_send_msg(cntrl, &response);
             free(msg->msg);
-            rules_free((struct r_rule *) data);
             break;
+        case RM_TRANS:
+            response.hd.mtype = reactor_rm_trans_handler(msg->msg);
+            cntrl_send_msg(cntrl, &response);
+            free(msg->msg);
         default:
             break;
     }
@@ -222,7 +246,7 @@ static void init_rules(){
         for(rules = parse_rules_file(filename, users->pw->pw_uid);
             rules != NULL;
             rules = rules->next){
-                reactor_rule_handler(rules);
+                reactor_add_rule_handler(rules);
         }
         rules_free(rules);
     }
@@ -286,8 +310,8 @@ int main(int argc, char *argv[]) {
     // TODO enqueue events
     // TODO open a control socket
     
-    eventnotices = reactor_hash_table_new((RHashFunc) reactor_str_hash, (REqualFunc) str_eq);
-    states = reactor_hash_table_new((RHashFunc) reactor_str_hash, (REqualFunc) str_eq);
+    reactor.eventnotices = reactor_hash_table_new((RHashFunc) reactor_str_hash, (REqualFunc) str_eq);
+    reactor.states = reactor_hash_table_new((RHashFunc) reactor_str_hash, (REqualFunc) str_eq);
     init_rules();
     /* sockets setup and poll */
     event_init();

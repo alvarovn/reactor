@@ -27,19 +27,17 @@
 
 #include "reactor.h"
 
-#define TRANS_COUNT 6
-
-/* By now this program only executes tests */
 int main(int argc, char *argv[]) {
     Cntrl *cntrl;
     int opt, optindex;
     enum rmsg_type mtype;
     const struct option options[] = {
         { "event", required_argument, NULL, 'e' },
-        { "rule", required_argument, NULL, 'r' }
+        { "add-rule", required_argument, NULL, 'r' },
+        { "remove-transition", required_argument, NULL, 't' }
     };
     
-    const char *optstring = "e:r:";
+    const char *optstring = "e:r:t:";
     struct r_msg msg;
     
     cntrl = cntrl_new(false);
@@ -52,25 +50,28 @@ int main(int argc, char *argv[]) {
         opt = getopt_long( argc, argv, optstring, options, &optindex )){
             switch(opt){
                 case 'e':
-                    msg.hd.mtype = REACTOR_EVENT;
+                    msg.hd.mtype = EVENT;
                     break;
                 case 'r':
-                    msg.hd.mtype = RULE;
+                    msg.hd.mtype = ADD_RULE;
                     break;
+                case 't':
+                    msg.hd.mtype = RM_TRANS;
+                    break;
+                default:
+                    /* TODO Inform of the unexistance of the argument */
+                    continue;
             }
             msg.msg = strdup(optarg);
             msg.hd.size = strlen(msg.msg) + 1;
 
             mtype = cntrl_send_msg(cntrl, &msg);
             switch(mtype){
-                case RULE_NOFROM:
-                    warn("Origin state must exist and it doesn't. The transition won't be added.");
-                    break;
                 case RULE_MULTINIT:
                     warn("Trying to set multiple initial transitions to the same state machine. The transition won't be added.");
                     break;
-                case RULE_MALFORMED:
-                    warn("Rule malformed.");
+                case ARG_MALFORMED:
+                    warn("Transition malformed.");
                     break;
                 case ACK:
                     break;

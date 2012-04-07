@@ -4,8 +4,4 @@
 
 - SELinux.
 
-- ref & unref for eventnotice and state.
-
-- Change transpointers to refcount.
-
 - Check udev-ctrl.c -> ctrl_send()

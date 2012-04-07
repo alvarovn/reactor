@@ -21,9 +21,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include "reactor.h"
-#include <stdlib.h>
 
 void rules_free(struct r_rule* rule){
     struct r_rule *aux;
@@ -40,7 +40,7 @@ void rules_free(struct r_rule* rule){
 }
 /*
  * Restricted characters:
- * '-', '&' and '#'
+ * '&' and '#'
  * TODO This function needs refactor
  */
 struct r_rule* rule_parse(char *rulestr, uid_t uid){
@@ -55,31 +55,17 @@ struct r_rule* rule_parse(char *rulestr, uid_t uid){
     
     token = rulestr;
     skip_blanks(token);
-    if(*token == '#'){
-        rule->to == NULL;
-        return rule;
-    }
     /* From state */
-    if(*token == '-'){
-        rule->from = NULL;
-        token+=sizeof(char);
-        if(*token != ' ' && *token != '\t'){
+    tokenlength = 0;
+    skip_noblanks(token, tokenlength);
+    if( token[tokenlength] == '\0' || 
+        token[tokenlength] == '&' || 
+        token[tokenlength] == '#' ||
+        token[tokenlength] == '\n'){
             goto syntax_error;
-        }
     }
-    else{
-        tokenlength = 0;
-        skip_noblanks(token, tokenlength);
-        if( token[tokenlength] == '\0' || 
-            token[tokenlength] == '&' || 
-            token[tokenlength] == '#' ||
-            token[tokenlength] == '\n' ||
-            token[tokenlength] == '-'){
-            goto syntax_error;
-        }
-        rule->from = strndup(token, tokenlength);
-        token += tokenlength;
-    }
+    rule->from = strndup(token, tokenlength);
+    token += tokenlength;
     /* To state */
     skip_blanks(token);
     tokenlength = 0;
@@ -87,8 +73,7 @@ struct r_rule* rule_parse(char *rulestr, uid_t uid){
     if( token[tokenlength] == '\0' || 
         token[tokenlength] == '&' || 
         token[tokenlength] == '#' ||
-        token[tokenlength] == '\n' ||
-        token[tokenlength] == '-'){
+        token[tokenlength] == '\n'){
             goto syntax_error;
     }
     rule->to = strndup(token, tokenlength);
@@ -107,10 +92,6 @@ struct r_rule* rule_parse(char *rulestr, uid_t uid){
         skip_blanks(token);
         tokenlength = 0;
         skip_noblanks(token, tokenlength);
-        while(token[tokenlength] == '-'){
-            tokenlength++;
-            skip_noblanks(token, tokenlength);
-        }
         rule->enids = reactor_slist_prepend(rule->enids, (void *) strndup(token, tokenlength));
         token += tokenlength;
         skip_blanks(token);
@@ -151,6 +132,8 @@ struct r_rule* rule_parse(char *rulestr, uid_t uid){
         goto end;
     }
     if(!strncmp("PROP", token, tokenlength)){
+        char *numend;
+        int port;
         token += tokenlength;
         skip_blanks(token);
         if( *token == '\0' ||
@@ -176,13 +159,17 @@ struct r_rule* rule_parse(char *rulestr, uid_t uid){
             tokenlength++;
         }
         token[tokenlength] = '\0';
-        action_prop_set_port(rule->raction, atoi(token));
+        port = (int) strtol(token, &numend, 10);
+        if( *numend != NULL ){
+            /* Malformed port number */
+            goto syntax_error;
+        }
+        action_prop_set_port(rule->raction, strtol(token, &numend, 10));
     }
 end:    
     return rule;
 syntax_error:
     rules_free(rule);
-    dbg("Rule malformed", NULL);
     return NULL;
 malloc_error:
     dbg_e("Error on malloc the new parsed rule", NULL);
@@ -195,6 +182,7 @@ struct r_rule* parse_rules_file(const char *filename, unsigned int uid){
     size_t len;
     int linecount;
     char line[LINE_SIZE];
+    char *linep;
     
     struct r_rule   *rule = NULL,
                     *head = NULL, 
@@ -208,6 +196,12 @@ struct r_rule* parse_rules_file(const char *filename, unsigned int uid){
     }
     
     while (fgets(line, sizeof(line), f) != NULL) {
+        /* Skip comments */
+        linep = &line[0];
+        skip_blanks(linep);
+        if(*linep == '#'){
+            continue;
+        }
         len = strlen(line);
         while (line[len-2] == '\\') {
             if (fgets(&line[len-2], (sizeof(line)-len)+2, f) == NULL)
@@ -228,7 +222,6 @@ struct r_rule* parse_rules_file(const char *filename, unsigned int uid){
             continue;
         }
         /* Commented line */
-        if(rule->to == NULL) continue;
         if(head == NULL || tail == NULL) {
             head = rule;
             tail = rule;
