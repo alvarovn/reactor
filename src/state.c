@@ -26,12 +26,12 @@
 struct _state {
     char *id;
     Transition *transitions;
-    unsigned int ntranspointers;
+    unsigned int refcount;
     /* This pointer acts as identifier of the finite state machine */
-    Transition *fsminitial;
+    State *fsminitial;
 };
 
-State* state_new(const char* id){
+State* state_new(struct reactor_d *reactor, const char* id){
     State *ste = NULL;
 
     if ((ste = (State *) calloc(1, sizeof(State))) == NULL) {
@@ -40,37 +40,54 @@ State* state_new(const char* id){
     }
 
     ste->id = strdup(id);
+    ste->refcount = 0;
+    reactor_hash_table_insert(reactor->states, ste->id, ste);
+
 end:
     return ste;
 }
 
-void state_set_fsminitial(State *ste, Transition *fsminitial){
-    ste->fsminitial= fsminitial;
+void state_set_fsminitial(State *ste, State *fsminitial){
+    state_ref(fsminitial);
+    ste->fsminitial = fsminitial;
 }
 
-Transition* state_get_fsminitial(State *ste){
+State* state_get_fsminitial(State *ste){
     return ste->fsminitial;
 }
 
-bool state_free(State *ste){
-    if(ste->ntranspointers-- > 0) return false;
-
-    trans_clist_free_full(ste->transitions);
+void state_unref(struct reactor_d *reactor, State *ste){
+    Transition *aux;
+    if(ste == NULL || --ste->refcount > 0) 
+        return;
+    for(;ste->transitions != NULL;){
+        aux = ste->transitions;
+        ste->transitions = trans_clist_free(reactor, aux);
+    }
+//     trans_clist_free_full(reactor, ste->transitions);
+    state_unref(reactor, ste->fsminitial);
+    reactor_hash_table_remove(reactor->states, ste->id);
+    info("State '%s' removed", ste->id);
     free(ste->id);
     free(ste);
-    return true;
 }
 
 void state_add_trans(State *ste, Transition *trans){
     ste->transitions = trans_clist_merge(ste->transitions, trans);
 }
 
+void state_set_trans(State *ste, Transition *trans){
+    ste->transitions = trans;
+}
+
 const char* state_get_id(State *ste){
     return ste->id;
 }
 
-void state_add_transpointer(State *ste){
-    ste->ntranspointers++;
+void state_ref(State *ste){
+    if(ste == NULL) 
+        return;
+    ste->refcount++;
 }
 
 Transition* state_get_trans(State *ste){

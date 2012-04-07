@@ -59,6 +59,10 @@ inline static void reactor_hash_table_destroy(RHashTable *ht){
     g_hash_table_destroy((GHashTable *) ht);
 }
 
+inline static bool reactor_hash_table_remove(RHashTable *hash_table, const void *key){
+    return (bool) g_hash_table_remove((GHashTable*) hash_table, (gconstpointer) key);
+}
+
 inline static unsigned int reactor_hash_table_size(RHashTable *ht){
     return g_hash_table_size(ht);
 }
@@ -95,6 +99,10 @@ inline static RSList* reactor_slist_remove(RSList *rsl, void *data){
 
 inline static RSList* reactor_slist_remove_all(RSList *rsl, void *data){
     return g_slist_remove_all(rsl, data);
+}
+
+inline static RSList* reactor_slist_delete_link(RSList *list, RSList *link_){
+    return g_slist_delete_link(list, link_);
 }
 // typedef GList RList;
 // 

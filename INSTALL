@@ -1,0 +1,45 @@
+Unpacking
+=========
+
+TODO
+
+Compiling
+=========
+
+reactor requires gcc as a C compiler (at least version TODO x.x.x).
+
+reactor relies on a number of third party libraries in order to be
+compiled, these are:
+  * GLib a cross-platform software utility library.
+  * Libevent an asynchronous file descriptor event notification software 
+    library.
+
+Once these libraries are installed, you can start compiling syslog-ng:
+
+cd to the reactor directory, and execute the following commands:
+
+        ./configure
+        make
+
+After the make cycle finishes, you'll get two executables in the src
+directory:
+
+   reactord            - the main daemon binary
+   reactorctl          - the daemon control binary
+
+Now do a "make install" and you are done. 
+
+Compile time options
+====================
+A couple of features must be enabled in compile time using one of the
+--enable-<feature> option to the configure script.
+
+Currently the following compile time features exist:
+
+  --enable-debug            log debug messages and compile for ease of 
+                            debugging
+  --enable-static-linking   compile reactor as a static binary
+  --disable-dynamic-linking compile reactor against system libraries
+                            dynamically, and statically against everything else
+
+

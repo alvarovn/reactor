@@ -1,0 +1,10 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libreactor
+Description: Library to control reactor
+Version: 0.1.0
+Libs: -L${libdir} -lreactor
+Cflags: -I${includedir}

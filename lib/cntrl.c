@@ -40,8 +40,9 @@ int cntrl_send_msg(Cntrl *cntrl, const struct r_msg *msg){
     hd.mtype = htonl((uint32_t)msg->hd.mtype);
     write(cntrl->psfd, (const void *) &hd, sizeof(struct rmsg_hd));
     switch(msg->hd.mtype){
-        case RULE:
-        case REACTOR_EVENT:
+        case ADD_RULE:
+        case EVENT:
+        case RM_TRANS:
            write(cntrl->psfd, msg->msg, msg->hd.size);
            response = cntrl_receive_msg(cntrl);
            error = (int) response->hd.mtype;

@@ -27,29 +27,32 @@
 struct _eventnotice {
     char *id;
     RSList *currtrans;
-    unsigned int ntranspointers;
+    unsigned int refcount;
 };
 
-EventNotice* en_new(const char* id) {
+EventNotice* en_new(struct reactor_d *reactor, const char* id) {
     EventNotice *en = NULL;
 
     if ((en = (EventNotice *) calloc(1, sizeof(EventNotice))) == NULL) {
         dbg_e("Error on malloc() the event notice '%s'", id);
         goto end;
     }
-
     en->id = strdup(id);
+    en->refcount = 0;
+    reactor_hash_table_insert(reactor->eventnotices, en->id, en);
 end:
     return en;
 }
 
-bool en_free(EventNotice *en) {
-    if (en->ntranspointers-- > 0) return false;
-
+void en_unref(struct reactor_d *reactor, EventNotice *en) {
+    if (en == NULL) return;
+    if (--en->refcount > 0) return;
     reactor_slist_free(en->currtrans);
+    en_clear_curr_trans(en);
+    reactor_hash_table_remove(reactor->eventnotices, en->id);
+    info("Event '%s' not expected anymore", en->id);
     free(en->id);
     free(en);
-    return true;
 }
 
 void en_add_curr_trans(EventNotice *en, Transition *trans) {
@@ -69,8 +72,9 @@ const RSList** en_get_currtrans_ref(EventNotice *en){
     return &en->currtrans;
 }
 
-void en_add_transpointer(EventNotice *en) {
-    en->ntranspointers++;
+void en_ref(EventNotice *en) {
+    if(en == NULL) return;
+    en->refcount++;
 }
 
 void en_remove_one_curr_trans(EventNotice *en, Transition *trans){

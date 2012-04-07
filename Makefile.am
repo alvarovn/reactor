@@ -38,7 +38,9 @@ src_reactord_SOURCES =	$(src_common_sources) \
 			src/rules.c \
 			src/eventnotice.c \
 			src/state.c \
-			src/transition.c
+			src/transition.c \
+			src/action.c
+
 src_reactord_LDADD =	lib/libreactor.la
 
 src_reactorctl_SOURCES =	$(reactor_common_sources) \
