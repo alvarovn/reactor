@@ -31,7 +31,6 @@
 #define SOCK_BUFF_SIZE 1024
 
 struct reactor_d reactor;
-Cntrl *cntrl;
 
 // TODO signal handlers
 
@@ -190,22 +189,22 @@ malformed:
 
 /* libevent control socket callback */
 
-static void receive_msg(int fd, short ev, void *arg){
+static void attend_cntrl_msg(int psfd, short ev, void *arg){
     struct r_msg response;
     struct r_msg *msg;
     void *data;
     response.hd.mtype = ACK;
     response.hd.size = 0;
     response.msg = NULL;
-    cntrl_listen(cntrl);
-    if((msg = cntrl_receive_msg(cntrl)) == NULL){
+    accept(psfd, NULL, NULL);
+    if((msg = receive_cntrl_msg(psfd)) == NULL){
         err("Error in the communication with 'reactorctl'");
         goto end;
     }
     switch(msg->hd.mtype){
         case EVENT:
             reactor_event_handler(msg->msg);
-            cntrl_send_msg(cntrl, &response);
+            send_cntrl_msg(psfd, &response);
             free(msg->msg);
             break;
         case ADD_RULE:
@@ -213,18 +212,18 @@ static void receive_msg(int fd, short ev, void *arg){
             data = (void *) rule_parse(msg->msg, 0);
             response.hd.mtype = reactor_add_rule_handler((struct r_rule *) data);
             rules_free((struct r_rule *) data);
-            cntrl_send_msg(cntrl, &response);
+            send_cntrl_msg(psfd, &response);
             free(msg->msg);
             break;
         case RM_TRANS:
             response.hd.mtype = reactor_rm_trans_handler(msg->msg);
-            cntrl_send_msg(cntrl, &response);
+            send_cntrl_msg(psfd, &response);
             free(msg->msg);
         default:
             break;
     }
 end:
-    cntrl_peer_close(cntrl);
+    close(psfd);
     
     free(msg);
 }
@@ -254,8 +253,8 @@ static void init_rules(){
 }
 
 int main(int argc, char *argv[]) {
-    int error;
-    struct event ev;
+    int error, cntrlsfd, remotesfd;
+    struct event cntrlev, remoteev;
     pid_t pid, sid;
     
     error = 0;
@@ -315,15 +314,14 @@ int main(int argc, char *argv[]) {
     init_rules();
     /* sockets setup and poll */
     event_init();
-    if((cntrl = cntrl_new(true)) == NULL){
+    if((cntrlsfd = listen_cntrl()) == -1){
         err("Unable to create the control socket and bind it to '%s'. Probably a permissions issue.", SOCK_PATH);
         goto exit;
     }
-    if(cntrl_listen(cntrl) == -1) {
-        goto exit;
-    }
-    event_set(&ev, cntrl_get_fd(cntrl), EV_READ | EV_PERSIST, &receive_msg, NULL);
-    event_add(&ev, NULL);
+    event_set(&cntrlev, cntrlsfd, EV_READ | EV_PERSIST, &attend_cntrl_msg, NULL);
+    event_add(&cntrlev, NULL);
+    event_set(&remoteev, remotesfd, EV_READ | EV_PERSIST, &attend_cntrl_msg, NULL);
+    event_add(&remoteev, NULL);
     event_dispatch();
 
     

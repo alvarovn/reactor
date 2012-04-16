@@ -5,8 +5,9 @@ AM_CFLAGS = 	-std=c99 \
 
 AM_LDFLAGS =	$(GLIB_LIBS) \
 		$(LIBEVENT_LIBS)
-
-# libreactor
+##############
+# libreactor #
+##############
 LIBREACTOR_CURRENT = 0
 LIBREACTOR_REVISION = 0
 LIBREACTOR_AGE = 0
@@ -16,7 +17,6 @@ lib_LTLIBRARIES = lib/libreactor.la
 
 lib_libreactor_la_SOURCES =	lib/libreactor-private.h \
 				lib/log-private.c \
-				lib/cntrl-private.c \
 				lib/cntrl.c
  
 lib_libreactor_la_LDFLAGS =	$(AM_LDFLAGS)
@@ -25,7 +25,9 @@ lib_libreactor_la_LDFLAGS =	$(AM_LDFLAGS)
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = lib/libreactor.pc
 
-# reactord & reactorctl
+#########################
+# reactord & reactorctl #
+#########################
 sbin_PROGRAMS = src/reactord
 bin_PROGRAMS = src/reactorctl
 
@@ -47,3 +49,7 @@ src_reactorctl_SOURCES =	$(reactor_common_sources) \
 				src/reactorctl.c
 
 src_reactorctl_LDADD =	lib/libreactor.la
+
+#########
+# tests #
+#########

@@ -18,65 +18,109 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#include "libreactor.h"
-#include "libreactor-private.h"
-
 #include <sys/un.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <stdlib.h>
 
-int cntrl_send_msg(Cntrl *cntrl, const struct r_msg *msg){
-    int error;
-    struct r_msg *response = NULL;
-    struct rmsg_hd hd;
+#include "libreactor.h"
+#include "libreactor-private.h"
+
+int listen_cntrl(){
+    struct sockaddr_un saddr;
+    int sfd;
+    /* TODO Backlog is 5 as a random number, change it to make sense */
+    const int BACKLOG = 5;
     
-    error = 0;
-    if(cntrl == NULL){
-        error = -1;
-        dbg("Trying to send a message to a 'NULL' cntrl", NULL);
+    if(sfd = socket(AF_UNIX, SOCK_STREAM, 0)  == -1){
+        dbg_e("Error creating control socket file descriptor", NULL);
+        sfd = -1;
         goto end;
     }
+    saddr.sun_family = AF_UNIX;
+    strncpy(saddr.sun_path, SOCK_PATH, sizeof(saddr.sun_path)-1);
+    unlink(saddr.sun_path);
+    if(bind(sfd, (struct sockaddr *) &saddr, sizeof(saddr)) == -1){
+        dbg_e("Control socket can't be bound. Probably a permissions issue", NULL);
+        sfd = -1;
+        goto end;
+    }
+    if(listen(sfd, BACKLOG) == -1){
+        dbg_e("Control socket listening failed", NULL);
+        sfd = -1;
+        goto end;
+    }
+end:
+    return sfd;
+}
+
+int connect_cntrl(){
+    struct sockaddr_un saddr;
+    int psfd;
+    
+    if(psfd = socket(AF_UNIX, SOCK_STREAM, 0)  == -1){
+        dbg_e("Error creating control socket file descriptor", NULL);
+        psfd = -1;
+        goto end;
+    }
+    saddr.sun_family = AF_UNIX;
+    strncpy(saddr.sun_path, SOCK_PATH, sizeof(saddr.sun_path)-1);
+    if(connect(psfd, (struct sockaddr *) &saddr, sizeof(saddr)) == -1){
+        dbg_e("Failed to connect to the control socket", NULL);
+        psfd = -1;
+        goto end;
+    }
+end:
+    return psfd;
+}
+
+int send_cntrl_msg(int psfd, const struct r_msg *msg){
+    int error = 0;
+    struct r_msg *response = NULL;
+    struct rmsg_hd hd;
+
     hd.size = htonl((uint32_t)msg->hd.size);
     hd.mtype = htonl((uint32_t)msg->hd.mtype);
-    write(cntrl->psfd, (const void *) &hd, sizeof(struct rmsg_hd));
+    
+    if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) dbg_e("signal() failed", NULL);
+    if(write(psfd, (const void *) &hd, sizeof(struct rmsg_hd)) != sizeof(struct rmsg_hd)){
+        dbg_e("Error writing to the socket", NULL);
+        error = -1;
+        goto end;
+    }
     switch(msg->hd.mtype){
         case ADD_RULE:
         case EVENT:
         case RM_TRANS:
-           write(cntrl->psfd, msg->msg, msg->hd.size);
-           response = cntrl_receive_msg(cntrl);
-           error = (int) response->hd.mtype;
-           free(response->msg);
-           free(response);
-           break;
+            if(write(psfd, msg->msg, msg->hd.size) != msg->hd.size){
+                dbg_e("Error writing to the socket", NULL);
+                error = -1;
+                goto end;
+            }
+            response = receive_cntrl_msg(psfd);
+            error = (int) response->hd.mtype;
+            free(response->msg);
+            free(response);
+            break;
     }
-    
+    if(signal(SIGPIPE, SIG_DFL) == SIG_ERR) dbg_e("signal() failed", NULL);
+
 end:
     return error;
 }
 
-struct r_msg* cntrl_receive_msg(Cntrl *cntrl){
-    int *sfd, readcount;
+struct r_msg* receive_cntrl_msg(int psfd){
+    int *sfd;
     struct r_msg * rmsg = NULL;
-    
-    readcount = 0;
-    if(cntrl == NULL){
-        dbg("Trying to receive a message from a 'NULL' cntrl", NULL);
-        goto end;
-    }
-    if(cntrl->server){
-        if(!cntrl->connected) cntrl->psfd = accept(cntrl->sfd, NULL, NULL);
-        cntrl->connected = true;
-    }
-
-    
 
     if((rmsg = (struct r_msg *) calloc(1, sizeof(struct r_msg))) == NULL){
         goto malloc_error;
     }
-    
     rmsg->hd.size = 0;
-    read(cntrl->psfd, (char *) &rmsg->hd, sizeof(struct rmsg_hd));
+    if(read(psfd, (char *) &rmsg->hd, sizeof(struct rmsg_hd) != sizeof(struct rmsg_hd))){
+        goto read_error;
+    }
     rmsg->hd.mtype = ntohl((u_int32_t) rmsg->hd.mtype);
     rmsg->hd.size = ntohl((u_int32_t) rmsg->hd.size);
 
@@ -87,12 +131,8 @@ struct r_msg* cntrl_receive_msg(Cntrl *cntrl){
         goto malloc_error;
     }
 
-    if((readcount = read(cntrl->psfd, rmsg->msg, rmsg->hd.size)) < rmsg->hd.size){
-        dbg_e("Error reading from the socket", NULL);
-        free(rmsg->msg);
-        free(rmsg);
-        rmsg = NULL;
-        goto end;
+    if(read(psfd, rmsg->msg, rmsg->hd.size) != rmsg->hd.size){
+        goto read_error;
     }
     /* TODO check credentials */
     
@@ -102,46 +142,9 @@ end:
 malloc_error:
     dbg_e("Error on malloc() the new message", NULL);
     return NULL;
-
-}
-
-void cntrl_peer_close(Cntrl *cntrl){
-    cntrl->connected = false;
-    close(cntrl->psfd);
-}
-
-void cntrl_free(Cntrl *cntrl){
-    cntrl_peer_close(cntrl);
-    close(cntrl->sfd);
-    free(cntrl);
-}
-
-Cntrl* cntrl_cl_new(){
-    return cntrl_new(false);
-}
-
-int cntrl_connect(Cntrl *cntrl){
-    int error = 0;
-    if(cntrl->server){
-        dbg("Trying to connect to cntrl server from the cntrl server", NULL);
-        error = -1;
-        goto end;
-    }
-    if( connect(    cntrl->psfd, 
-                    (struct sockaddr *) &cntrl->saddr, 
-                    sizeof(struct sockaddr_un)) == -1){
-                       
-        dbg_e("Failed to connect to the control socket", NULL);
-        error = -1;
-        goto end;
-    }
-end:
-    return error;
-}
-
-int cntrl_get_fd(Cntrl *cntrl){
-    if(cntrl == NULL){
-        return -1;
-    }
-    return cntrl->sfd;
+read_error:
+    dbg_e("Error reading from the socket", NULL);
+    free(rmsg->msg);
+    free(rmsg);
+    return NULL;
 }

@@ -145,16 +145,4 @@ void l_debug_e(const char *format, ...) PRINTF_ATTR(1, 2);
 
 #endif/* !DEBUG */
 
-/* cntrl-private.c */
-typedef struct _cntrl{
-    struct sockaddr_un saddr;
-    int sfd;
-    int psfd;
-    bool listening;
-    bool server;
-    bool connected;
-}Cntrl;
-
-int cntrl_listen(Cntrl* cntrl);
-Cntrl* cntrl_new(bool server);
 #endif

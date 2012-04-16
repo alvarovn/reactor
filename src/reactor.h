@@ -28,6 +28,8 @@
 
 /* TODO Group should be defined on a configuration file */
 
+#define REACTOR_PORT 6500
+
 #define R_GRP "events"
 
 #define RULES_FILE "reactor.rules"
@@ -86,6 +88,7 @@ struct r_event{
 //     pid_t fontpid;  
 };
 typedef struct _transition Transition;
+typedef struct _remote Remote;
 
 /* user.c */
 struct r_user{
@@ -125,6 +128,7 @@ void state_ref(State *ste);
 Transition* state_get_trans(State *ste);
 void state_set_fsminitial(State *ste, State *fsminitial);
 State* state_get_fsminitial(State *ste);
+
 /* transition.c */
 typedef struct cmd_action;
 

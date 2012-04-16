@@ -28,8 +28,7 @@
 #include "reactor.h"
 
 int main(int argc, char *argv[]) {
-    Cntrl *cntrl;
-    int opt, optindex;
+    int opt, optindex, psfd;
     enum rmsg_type mtype;
     const struct option options[] = {
         { "event", required_argument, NULL, 'e' },
@@ -40,9 +39,9 @@ int main(int argc, char *argv[]) {
     const char *optstring = "e:r:t:";
     struct r_msg msg;
     
-    cntrl = cntrl_new(false);
-    if(cntrl_connect(cntrl) == -1){
-        warn("reactord is not running. Start reactord");
+    ;
+    if((psfd = connect_cntrl()) == -1){
+        warn("Seems that reactord is not running. Start reactord");
         return 1;
     }
     for(opt = getopt_long( argc, argv, optstring, options, &optindex );
@@ -65,7 +64,7 @@ int main(int argc, char *argv[]) {
             msg.msg = strdup(optarg);
             msg.hd.size = strlen(msg.msg) + 1;
 
-            mtype = cntrl_send_msg(cntrl, &msg);
+            mtype = send_cntrl_msg(psfd, &msg);
             switch(mtype){
                 case RULE_MULTINIT:
                     warn("Trying to set multiple initial transitions to the same state machine. The transition won't be added.");
@@ -79,8 +78,7 @@ int main(int argc, char *argv[]) {
                     warn("reactord is not working properly.");
                     break;
             }
-            cntrl_peer_close(cntrl);
-            cntrl_free(cntrl);
+            close(psfd);
         }
     return 0;
 }

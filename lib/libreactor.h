@@ -24,7 +24,6 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define REACTOR_PORT 6500
 
 static inline bool str_eq(const char *s1, const char *s2){
     return !strcmp(s1, s2);
@@ -52,14 +51,9 @@ struct r_msg{
     char *msg;
 };
 
-typedef struct _cntrl Cntrl;
-
-int cntrl_send_msg(Cntrl *cntrl, const struct r_msg *msg);
-void cntrl_peer_close(Cntrl *cntrl);
-struct r_msg* cntrl_receive_msg(Cntrl *cntrl);
-void cntrl_free(Cntrl *cntrl);
-Cntrl* cntrl_cl_new();
-int cntrl_connect(Cntrl *cntrl);
-int cntrl_get_fd(Cntrl *cntrl);
+int listen_cntrl();
+int connect_cntrl();
+int send_cntrl_msg(int psfd, const struct r_msg *msg);
+struct r_msg* receive_cntrl_msg(int psfd);
 
 #endif

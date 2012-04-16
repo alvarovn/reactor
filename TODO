@@ -1,7 +1,13 @@
 - Alternative log output to syslog
 
-- Transitions that will never be executed again should be freed.
+- Transitions that will never be executed again should be freed
 
-- SELinux.
+- SELinux
 
 - Check udev-ctrl.c -> ctrl_send()
+
+- Change license of ./lib files to LGPL
+
+- Unit and end-to-end tests
+
+- Refactorize to remove unneeded abstraction
