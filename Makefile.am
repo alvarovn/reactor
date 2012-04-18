@@ -1,5 +1,4 @@
-AM_CFLAGS = 	-std=c99 \
-		$(GLIB_CFLAGS) \
+AM_CFLAGS =	$(GLIB_CFLAGS) \
 		$(LIBEVENT_CFLAGS) \
 		-I$(top_srcdir)/lib/
 
@@ -47,3 +46,7 @@ src_reactorctl_SOURCES =	$(reactor_common_sources) \
 				src/reactorctl.c
 
 src_reactorctl_LDADD =	lib/libreactor.la
+
+# Hooks
+install-exec-hook:
+	groupadd events || true

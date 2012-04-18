@@ -81,8 +81,15 @@ inline static void reactor_slist_free(RSList *rsl){
     g_slist_free(rsl);
 }
 
+inline static RSList* reactor_slist_delete_link(RSList *list, RSList *link_){
+    return g_slist_delete_link(list, link_);
+}
+
 inline static void reactor_slist_free_full(RSList *rsl, RDestroyNotify free_func){
-    g_slist_free_full(rsl, (RDestroyNotify) free_func);
+    while(rsl != NULL){
+        free_func(rsl->data);
+        rsl = reactor_slist_delete_link(rsl, rsl);
+    }
 }
 
 inline static void reactor_slist_foreach(RSList *rsl, RFunc func, void *user_data){
@@ -99,10 +106,6 @@ inline static RSList* reactor_slist_remove(RSList *rsl, void *data){
 
 inline static RSList* reactor_slist_remove_all(RSList *rsl, void *data){
     return g_slist_remove_all(rsl, data);
-}
-
-inline static RSList* reactor_slist_delete_link(RSList *list, RSList *link_){
-    return g_slist_delete_link(list, link_);
 }
 // typedef GList RList;
 // 
@@ -153,7 +156,7 @@ typedef struct _cntrl{
     bool listening;
     bool server;
     bool connected;
-}Cntrl;
+};
 
 int cntrl_listen(Cntrl* cntrl);
 Cntrl* cntrl_new(bool server);
