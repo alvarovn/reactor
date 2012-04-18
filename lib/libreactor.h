@@ -39,7 +39,8 @@ enum rmsg_type{
     /* from server */
     ACK,
     RULE_MULTINIT,
-    ARG_MALFORMED
+    ARG_MALFORMED,
+    NO_TRANS
 };
 
 struct rmsg_hd{

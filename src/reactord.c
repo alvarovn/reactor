@@ -172,10 +172,14 @@ static enum rmsg_type reactor_rm_trans_handler(char *msg){
     if( *transnumend != NULL || transnum <= 0 ){
         goto malformed;
     }
-    info("Removing transition %s...", msg);
     msg[msgp] = '\0';
     state = reactor_hash_table_lookup(reactor.states, (void *) msg);
+    if(state == NULL){
+        rmt = NO_TRANS;
+        goto end;
+    }
     msg[msgp] = '.';
+    info("Removing transition %s...", msg);
     trans = state_get_trans(state);
     for (i = 1; i < transnum; i++){
         trans = trans_clist_next(trans);
@@ -183,6 +187,7 @@ static enum rmsg_type reactor_rm_trans_handler(char *msg){
     trans_clist_remove_link(trans);
     state_set_trans(state, trans_clist_free(&reactor, trans));
     info("Transition %s removed", msg);
+end:
     return rmt;
 malformed:
     return ARG_MALFORMED;
