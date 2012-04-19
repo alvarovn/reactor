@@ -127,9 +127,9 @@ Transition* trans_clist_free(struct reactor_d *reactor, Transition *trans){
         en_unref(reactor, trans->enrequisites->data);
         trans->enrequisites = reactor_slist_delete_link(trans->enrequisites, trans->enrequisites);
     }
-    action_free(trans->raction);
     ret = trans_clist_remove_link(trans);
     state_unref(reactor, trans->dest);
+    action_free(trans->raction);
     free(trans);
     return ret;
 }
