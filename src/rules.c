@@ -191,7 +191,7 @@ struct r_rule* parse_rules_file(const char *filename, unsigned int uid){
     info("Reading '%s' as rules file", filename);
     f = fopen(filename, "r");
     if (f == NULL){
-        warn("Unable to open '%s' rules file");
+        warn("Unable to open '%s' rules file", filename);
         goto end;
     }
     
