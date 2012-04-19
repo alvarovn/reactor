@@ -131,7 +131,7 @@ Transition* trans_clist_free(struct reactor_d *reactor, Transition *trans){
     ret = trans_clist_remove_link(trans);
     state_unref(reactor, trans->dest);
     free(trans);
-    return;
+    return ret;
 }
 
 bool trans_notice_event(Transition *trans){
