@@ -120,7 +120,9 @@ end:
 
 Transition* trans_clist_free(struct reactor_d *reactor, Transition *trans){
     Transition *ret;
-    reactor_slist_foreach(trans->enrequisites, en_remove_one_curr_trans, trans);
+    if(trans == NULL) return NULL;
+    if(trans->enrequisites != NULL)
+        reactor_slist_foreach(trans->enrequisites, en_remove_one_curr_trans, trans);
     while(trans->enrequisites != NULL){
         en_unref(reactor, trans->enrequisites->data);
         trans->enrequisites = reactor_slist_delete_link(trans->enrequisites, trans->enrequisites);
