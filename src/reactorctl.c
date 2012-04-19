@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
                     warn("Transition malformed.");
                     break;
                 case NO_TRANS:
-                    warn("Transition '%s' doesn't exist");
+                    warn("Transition '%s' doesn't exist", msg.msg);
                 case ACK:
                     break;
                 default:
