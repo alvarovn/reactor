@@ -91,5 +91,6 @@ void state_ref(State *ste){
 }
 
 Transition* state_get_trans(State *ste){
+    if(ste == NULL) return NULL;
     return ste->transitions;
 }

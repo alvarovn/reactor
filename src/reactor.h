@@ -33,7 +33,6 @@
 #define R_GRP "events"
 
 #define RULES_FILE "reactor.rules"
-#define PATH_MAX 8192
 
 #define skip_blanks(c) \
             while (*c == '\t' || *c == ' ') \
