@@ -195,14 +195,15 @@ malformed:
 
 /* libevent control socket callback */
 
-static void attend_cntrl_msg(int psfd, short ev, void *arg){
+static void attend_cntrl_msg(int sfd, short ev, void *arg){
+    int psfd;
     struct r_msg response;
     struct r_msg *msg;
     void *data;
     response.hd.mtype = ACK;
     response.hd.size = 0;
     response.msg = NULL;
-    accept(psfd, NULL, NULL);
+    psfd = accept(sfd, NULL, NULL);
     if((msg = receive_cntrl_msg(psfd)) == NULL){
         err("Error in the communication with 'reactorctl'");
         goto end;

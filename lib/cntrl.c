@@ -91,7 +91,8 @@ int send_cntrl_msg(int psfd, const struct r_msg *msg){
     hd.size = htonl((uint32_t)msg->hd.size);
     hd.mtype = htonl((uint32_t)msg->hd.mtype);
     
-    if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) dbg_e("signal() failed", NULL);
+    if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) 
+        dbg_e("signal() failed", NULL);
     if(reactor_write(psfd, (const void *) &hd, sizeof(struct rmsg_hd)) != sizeof(struct rmsg_hd)){
         dbg_e("Error writing to the socket", NULL);
         error = -1;
@@ -112,7 +113,8 @@ int send_cntrl_msg(int psfd, const struct r_msg *msg){
             free(response);
             break;
     }
-    if(signal(SIGPIPE, SIG_DFL) == SIG_ERR) dbg_e("signal() failed", NULL);
+    if(signal(SIGPIPE, SIG_DFL) == SIG_ERR) 
+        dbg_e("signal() failed", NULL);
 
 end:
     return error;
@@ -126,8 +128,12 @@ struct r_msg* receive_cntrl_msg(int psfd){
         goto malloc_error;
     }
     rmsg->hd.size = 0;
-    if(reactor_read(psfd, (char *) &rmsg->hd, sizeof(struct rmsg_hd) != sizeof(struct rmsg_hd))){
-        goto read_error;
+    if(reactor_read(psfd, (char *) &rmsg->hd, sizeof(struct rmsg_hd)) != sizeof(struct rmsg_hd)){
+        dbg_e("Error reading from the socket", NULL);
+        free(rmsg->msg);
+        free(rmsg);
+        rmsg = NULL;
+        goto end;
     }
     rmsg->hd.mtype = ntohl((u_int32_t) rmsg->hd.mtype);
     rmsg->hd.size = ntohl((u_int32_t) rmsg->hd.size);
@@ -142,7 +148,11 @@ struct r_msg* receive_cntrl_msg(int psfd){
     }
 
     if(reactor_read(psfd, rmsg->msg, rmsg->hd.size) != rmsg->hd.size){
-        goto read_error;
+        dbg_e("Error reading from the socket", NULL);
+        free(rmsg->msg);
+        free(rmsg);
+        rmsg = NULL;
+        goto end;
     }
     /* TODO check credentials */
     
@@ -151,11 +161,6 @@ end:
     return rmsg;
 malloc_error:
     dbg_e("Error on malloc() the new message", NULL);
-    return NULL;
-read_error:
-    dbg_e("Error reading from the socket", NULL);
-    free(rmsg->msg);
-    free(rmsg);
     return NULL;
 }
 
