@@ -18,45 +18,11 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#ifndef LIBREACTOR_INCLUDED
-#define LIBREACTOR_INCLUDED
+#ifndef TEST_INCLUDED
+#define TEST_INCLUDED
 
-#include <string.h>
-#include <stdbool.h>
+#include <check.h>
 
-
-static inline bool str_eq(const char *s1, const char *s2){
-    return !strcmp(s1, s2);
-}
-
-/* cntrl.c */
-enum rmsg_type{
-    /* to server */
-    EVENT,
-    ADD_RULE,
-    RM_TRANS,
-    EOM,
-    /* from server */
-    ACK,
-    RULE_MULTINIT,
-    ARG_MALFORMED,
-    NO_TRANS
-};
-
-struct rmsg_hd{
-    int size;
-    enum rmsg_type mtype;
-};
-
-struct r_msg{
-    struct rmsg_hd hd;
-    char *msg;
-};
-
-int listen_cntrl();
-int connect_cntrl();
-int send_cntrl_msg(int psfd, const struct r_msg *msg);
-struct r_msg* receive_cntrl_msg(int psfd);
-void close_cntrl(int sfd); 
+Suite* make_cntrl_suite(void);
 
 #endif

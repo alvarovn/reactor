@@ -18,45 +18,14 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#ifndef LIBREACTOR_INCLUDED
-#define LIBREACTOR_INCLUDED
+#include <unistd.h>
 
-#include <string.h>
-#include <stdbool.h>
+#include "libreactor-private.h"
 
-
-static inline bool str_eq(const char *s1, const char *s2){
-    return !strcmp(s1, s2);
+ssize_t reactor_read(int fd, void *buf, size_t count){
+    return read(fd, buf, count);
 }
 
-/* cntrl.c */
-enum rmsg_type{
-    /* to server */
-    EVENT,
-    ADD_RULE,
-    RM_TRANS,
-    EOM,
-    /* from server */
-    ACK,
-    RULE_MULTINIT,
-    ARG_MALFORMED,
-    NO_TRANS
-};
-
-struct rmsg_hd{
-    int size;
-    enum rmsg_type mtype;
-};
-
-struct r_msg{
-    struct rmsg_hd hd;
-    char *msg;
-};
-
-int listen_cntrl();
-int connect_cntrl();
-int send_cntrl_msg(int psfd, const struct r_msg *msg);
-struct r_msg* receive_cntrl_msg(int psfd);
-void close_cntrl(int sfd); 
-
-#endif
+ssize_t reactor_write(int fd, void *buf, size_t count){
+    return write(fd, buf, count);
+}

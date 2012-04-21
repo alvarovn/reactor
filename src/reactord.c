@@ -332,6 +332,8 @@ int main(int argc, char *argv[]) {
 
     
 exit:
+    close_cntrl(cntrlsfd);
+    close(remotesfd);
     return error;
 }
 

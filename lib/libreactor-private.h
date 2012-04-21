@@ -31,7 +31,12 @@
 
 /* TODO Socket must be changed to a secure path */
 
-#define SOCK_PATH "/tmp/rctlsock"
+#ifdef DEBUG
+// A place where the permissions are not a problem for users
+#define SOCK_PATH "/tmp/rctl.sock"
+#else
+#define SOCK_PATH "/var/run/rctl.sock"
+#endif
 
 /* basic third party data structures wrappers */
 
@@ -147,5 +152,11 @@ void l_debug_e(const char *format, ...) PRINTF_ATTR(1, 2);
 #define dbg_e(format, ...) (void)(0)
 
 #endif/* !DEBUG */
+
+/* utils.c */
+// syscall wrappers for unit testing
+// TODO Can this be done inline?
+ssize_t reactor_read(int fd, void *buf, size_t count);
+ssize_t reactor_write(int fd, void *buf, size_t count);
 
 #endif

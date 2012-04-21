@@ -18,45 +18,15 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#ifndef LIBREACTOR_INCLUDED
-#define LIBREACTOR_INCLUDED
+#include <stdlib.h>
 
-#include <string.h>
-#include <stdbool.h>
+#include "tests.h"
 
-
-static inline bool str_eq(const char *s1, const char *s2){
-    return !strcmp(s1, s2);
+int main (void){
+    int number_failed;
+    SRunner *sr = srunner_create(make_cntrl_suite());
+    srunner_run_all(sr, CK_NORMAL);
+    number_failed = srunner_ntests_failed(sr);
+    srunner_free(sr);
+    return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
-
-/* cntrl.c */
-enum rmsg_type{
-    /* to server */
-    EVENT,
-    ADD_RULE,
-    RM_TRANS,
-    EOM,
-    /* from server */
-    ACK,
-    RULE_MULTINIT,
-    ARG_MALFORMED,
-    NO_TRANS
-};
-
-struct rmsg_hd{
-    int size;
-    enum rmsg_type mtype;
-};
-
-struct r_msg{
-    struct rmsg_hd hd;
-    char *msg;
-};
-
-int listen_cntrl();
-int connect_cntrl();
-int send_cntrl_msg(int psfd, const struct r_msg *msg);
-struct r_msg* receive_cntrl_msg(int psfd);
-void close_cntrl(int sfd); 
-
-#endif

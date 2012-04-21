@@ -153,4 +153,8 @@ void action_cmd_set_cmd(struct r_action *raction, char *cmd);
 void action_prop_set_port(struct r_action *raction, unsigned int port);
 void action_prop_set_addr(struct r_action *raction, char *addr);
 void action_prop_set_enids(struct r_action *raction, RSList *enids);
+/* remote.c */
+
+int listen_remote();
+int connect_remote(char *host, int port);
 #endif

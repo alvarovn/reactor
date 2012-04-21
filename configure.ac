@@ -25,8 +25,9 @@ AC_PREFIX_DEFAULT([/usr])
 
 # Checks for libraries.
 
-PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.22.0])
+PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.22.0])
 #PKG_CHECK_MODULES(LIBEVENT, [libevent >= 2.0.10])
+PKG_CHECK_MODULES(CHECK, [check >= 0.9.8])
 
 # Checks for header files.
 
@@ -56,6 +57,9 @@ AC_ARG_ENABLE(debug,
 AM_CONDITIONAL(ENABLE_DEBUG, test "$enable_debug" = "yes")
 CFLAGS="$DEBUG_CFLAGS"
 
+############################################
+# libevent checks copied from Tor project. #
+############################################
 trylibeventdir=""
 AC_ARG_WITH(libevent-dir,
        [  --with-libevent-dir=PATH     Specify path to Libevent installation ],

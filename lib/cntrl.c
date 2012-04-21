@@ -20,9 +20,10 @@
 
 #include <sys/un.h>
 #include <arpa/inet.h>
-#include <unistd.h>
 #include <sys/socket.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <limits.h>
 
 #include "libreactor.h"
 #include "libreactor-private.h"
@@ -33,7 +34,7 @@ int listen_cntrl(){
     /* TODO Backlog is 5 as a random number, change it to make sense */
     const int BACKLOG = 5;
     
-    if(sfd = socket(AF_UNIX, SOCK_STREAM, 0)  == -1){
+    if((sfd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1){
         dbg_e("Error creating control socket file descriptor", NULL);
         sfd = -1;
         goto end;
@@ -42,13 +43,20 @@ int listen_cntrl(){
     strncpy(saddr.sun_path, SOCK_PATH, sizeof(saddr.sun_path)-1);
     unlink(saddr.sun_path);
     if(bind(sfd, (struct sockaddr *) &saddr, sizeof(saddr)) == -1){
-        dbg_e("Control socket can't be bound. Probably a permissions issue", NULL);
+        dbg_e("Control socket with '%s' can't be bound. Probably a permissions issue", SOCK_PATH);
+        sfd = -1;
+        goto end;
+    }
+    if(chmod(SOCK_PATH, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) == -1){
+        dbg_e("Permissions on the '%s' control socket can't be changed", SOCK_PATH);
+        close_cntrl(sfd);
         sfd = -1;
         goto end;
     }
     if(listen(sfd, BACKLOG) == -1){
         dbg_e("Control socket listening failed", NULL);
         sfd = -1;
+        close_cntrl(sfd);
         goto end;
     }
 end:
@@ -59,7 +67,7 @@ int connect_cntrl(){
     struct sockaddr_un saddr;
     int psfd;
     
-    if(psfd = socket(AF_UNIX, SOCK_STREAM, 0)  == -1){
+    if((psfd = socket(AF_UNIX, SOCK_STREAM, 0))  == -1){
         dbg_e("Error creating control socket file descriptor", NULL);
         psfd = -1;
         goto end;
@@ -84,7 +92,7 @@ int send_cntrl_msg(int psfd, const struct r_msg *msg){
     hd.mtype = htonl((uint32_t)msg->hd.mtype);
     
     if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) dbg_e("signal() failed", NULL);
-    if(write(psfd, (const void *) &hd, sizeof(struct rmsg_hd)) != sizeof(struct rmsg_hd)){
+    if(reactor_write(psfd, (const void *) &hd, sizeof(struct rmsg_hd)) != sizeof(struct rmsg_hd)){
         dbg_e("Error writing to the socket", NULL);
         error = -1;
         goto end;
@@ -93,7 +101,7 @@ int send_cntrl_msg(int psfd, const struct r_msg *msg){
         case ADD_RULE:
         case EVENT:
         case RM_TRANS:
-            if(write(psfd, msg->msg, msg->hd.size) != msg->hd.size){
+            if(reactor_write(psfd, msg->msg, msg->hd.size) != msg->hd.size){
                 dbg_e("Error writing to the socket", NULL);
                 error = -1;
                 goto end;
@@ -118,20 +126,22 @@ struct r_msg* receive_cntrl_msg(int psfd){
         goto malloc_error;
     }
     rmsg->hd.size = 0;
-    if(read(psfd, (char *) &rmsg->hd, sizeof(struct rmsg_hd) != sizeof(struct rmsg_hd))){
+    if(reactor_read(psfd, (char *) &rmsg->hd, sizeof(struct rmsg_hd) != sizeof(struct rmsg_hd))){
         goto read_error;
     }
     rmsg->hd.mtype = ntohl((u_int32_t) rmsg->hd.mtype);
     rmsg->hd.size = ntohl((u_int32_t) rmsg->hd.size);
-
-    /* TODO: This is pretty insecure since it will malloc any size sent. Fix it.
-    */
+    
+    if(rmsg->hd.size > SSIZE_MAX){
+        free(rmsg);
+        goto malloc_error;
+    }
     if((rmsg->msg = (char *) calloc(1, rmsg->hd.size)) == NULL){
         free(rmsg);
         goto malloc_error;
     }
 
-    if(read(psfd, rmsg->msg, rmsg->hd.size) != rmsg->hd.size){
+    if(reactor_read(psfd, rmsg->msg, rmsg->hd.size) != rmsg->hd.size){
         goto read_error;
     }
     /* TODO check credentials */
@@ -147,4 +157,9 @@ read_error:
     free(rmsg->msg);
     free(rmsg);
     return NULL;
+}
+
+void close_cntrl(int sfd){
+    close(sfd);
+    unlink(SOCK_PATH);
 }

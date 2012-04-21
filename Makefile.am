@@ -16,7 +16,8 @@ lib_LTLIBRARIES = lib/libreactor.la
 
 lib_libreactor_la_SOURCES =	lib/libreactor-private.h \
 				lib/log-private.c \
-				lib/cntrl.c
+				lib/cntrl.c \
+				lib/util-private.c
  
 lib_libreactor_la_LDFLAGS =	$(AM_LDFLAGS)
 				-version-info $(LIBREACTOR_CURRENT):$(LIBREACTOR_REVISION):$(LIBREACTOR_AGE)
@@ -28,13 +29,9 @@ pkgconfig_DATA = lib/libreactor.pc
 # reactord & reactorctl #
 #########################
 sbin_PROGRAMS = src/reactord
-bin_PROGRAMS = src/reactorctl
+bin_PROGRAMS = src/reactorctl				
 
-src_common_sources =	src/reactor.h
-				
-
-src_reactord_SOURCES =	$(src_common_sources) \
-			src/reactord.c \
+src_reactord_modules = 	src/reactor.h \
 			src/user.c \
 			src/rules.c \
 			src/eventnotice.c \
@@ -42,9 +39,12 @@ src_reactord_SOURCES =	$(src_common_sources) \
 			src/transition.c \
 			src/action.c
 
+src_reactord_SOURCES =	src/reactord.c \
+			$(src_reactord_modules)
+
 src_reactord_LDADD =	lib/libreactor.la
 
-src_reactorctl_SOURCES =	$(reactor_common_sources) \
+src_reactorctl_SOURCES =	src/reactor.h \
 				src/reactorctl.c
 
 src_reactorctl_LDADD =	lib/libreactor.la
@@ -52,6 +52,19 @@ src_reactorctl_LDADD =	lib/libreactor.la
 #########
 # tests #
 #########
+TESTS = 		tests/tests
+check_PROGRAMS =	$(TESTS)
+
+tests_tests_SOURCES = 	tests/tests.c \
+			tests/tests.h \
+			tests/cntrl-tests.c 
+
+tests_tests_CFLAGS = 	@CHECK_CFLAGS@ \
+			-I$(top_srcdir)/src/ \
+			$(AM_CFLAGS)
+
+tests_tests_LDADD = 	lib/libreactor.la \
+			@CHECK_LIBS@
 
 # Hooks
 install-exec-hook:

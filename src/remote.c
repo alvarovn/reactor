@@ -47,8 +47,7 @@ int listen_remote(){
     }
     optval = 1;
     for (rp = result; rp != NULL; rp = rp->ai_next) {
-        sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-        if (sfd == -1)
+        if ((sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol)) == -1)
             continue;
         if (setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1){
             dbg_e("setsockopt() failed", NULL);
@@ -90,8 +89,7 @@ int connect_remote(char *host, int port){
         goto end;
     }
     for (rp = result; rp != NULL; rp = rp->ai_next) {
-        psfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-        if (psfd == -1)
+        if ((socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol)) == -1)
             continue;
         if (connect(psfd, rp->ai_addr, rp->ai_addrlen) != -1)
             break;
