@@ -38,6 +38,8 @@
 #define SOCK_PATH "/var/run/rctl.sock"
 #endif
 
+#define MAX_ZERO_WRITES 5
+
 /* basic third party data structures wrappers */
 
 typedef GDestroyNotify RDestroyNotify;

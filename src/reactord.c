@@ -25,6 +25,7 @@
 #include <event.h>
 #include <pwd.h>
 #include <stdlib.h>
+#include <arpa/inet.h>
 
 #include "reactor.h"
 
@@ -184,7 +185,7 @@ static enum rmsg_type reactor_rm_trans_handler(char *msg){
     for (i = 1; i < transnum; i++){
         trans = trans_clist_next(trans);
     }
-    state_set_trans(state, trans_clist_free(&reactor, trans));
+    state_set_trans(state, trans_clist_free_1(&reactor, trans));
     state_unref(&reactor, state);
     info("Transition %s removed", msg);
 end:
@@ -193,7 +194,7 @@ malformed:
     return ARG_MALFORMED;
 }
 
-/* libevent control socket callback */
+/* libevent control socket callbacks */
 
 static void attend_cntrl_msg(int sfd, short ev, void *arg){
     int psfd;
@@ -233,6 +234,34 @@ end:
     close(psfd);
     
     free(msg);
+}
+
+static void attend_remote_events(int sfd, short ev, void *arg){
+    struct sockaddr addr;
+    char ip[INET6_ADDRSTRLEN];
+    int psfd,
+        addrlen = sizeof(struct sockaddr);
+    RSList *eids;
+    RSList *eidsp;
+    
+    ip[0] = NULL;
+    if(psfd = accept(psfd, &addr, &addrlen) == -1){
+        dbg_e("Unable to stablish connection with remote reactord", NULL);
+    }
+    else inet_ntop(addr.sa_family, &addr, ip, INET6_ADDRSTRLEN);
+    
+    if((eids = receive_remote_events(psfd)) == NULL){
+        goto end;
+    }
+    for(eidsp = eids; eidsp != NULL; eidsp = reactor_slist_next(eidsp)){
+        reactor_event_handler(eidsp->data);
+    }
+end:
+    while(eids != NULL){
+        free(eids->data);
+        eids = reactor_slist_delete_link(eids, eids);
+    }
+    close(psfd);
 }
 
 /* TODO We need a way to distinguish states with the same name but from different users */
@@ -325,9 +354,13 @@ int main(int argc, char *argv[]) {
         err("Unable to create the control socket and bind it to '%s'. Probably a permissions issue.", SOCK_PATH);
         goto exit;
     }
+    if((remotesfd = listen_remote()) == -1){
+        err("Unable to create the remote socket.");
+        goto exit;
+    }
     event_set(&cntrlev, cntrlsfd, EV_READ | EV_PERSIST, &attend_cntrl_msg, NULL);
     event_add(&cntrlev, NULL);
-    event_set(&remoteev, remotesfd, EV_READ | EV_PERSIST, &attend_cntrl_msg, NULL);
+    event_set(&remoteev, remotesfd, EV_READ | EV_PERSIST, &attend_remote_events, NULL);
     event_add(&remoteev, NULL);
     event_dispatch();
 

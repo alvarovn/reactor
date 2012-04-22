@@ -37,7 +37,8 @@ src_reactord_modules = 	src/reactor.h \
 			src/eventnotice.c \
 			src/state.c \
 			src/transition.c \
-			src/action.c
+			src/action.c \
+			src/remote.c
 
 src_reactord_SOURCES =	src/reactord.c \
 			$(src_reactord_modules)

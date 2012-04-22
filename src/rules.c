@@ -133,7 +133,7 @@ struct r_rule* rule_parse(char *rulestr, uid_t uid){
     }
     if(!strncmp("PROP", token, tokenlength)){
         char *numend;
-        int port;
+        unsigned short port;
         token += tokenlength;
         skip_blanks(token);
         if( *token == '\0' ||
@@ -142,7 +142,7 @@ struct r_rule* rule_parse(char *rulestr, uid_t uid){
             *token == '\n' ){
                goto syntax_error; 
         }
-        tokenlength = 1;
+        tokenlength = 0;
         while(token[tokenlength] != ':' && token[tokenlength] != '\0') 
             tokenlength++;
         rule->raction = action_new(PROP);
@@ -152,7 +152,7 @@ struct r_rule* rule_parse(char *rulestr, uid_t uid){
             action_prop_set_port(rule->raction, REACTOR_PORT);
             goto end;
         }
-        token += tokenlength;
+        token += tokenlength+1;
         skip_blanks(token);
         tokenlength = 0;
         while(token[tokenlength] != '\0' && token[tokenlength] != ' '){
@@ -160,11 +160,12 @@ struct r_rule* rule_parse(char *rulestr, uid_t uid){
         }
         token[tokenlength] = '\0';
         port = (int) strtol(token, &numend, 10);
-        if( *numend != NULL ){
+        if( *numend != NULL && *numend != '\n'){
             /* Malformed port number */
             goto syntax_error;
         }
-        action_prop_set_port(rule->raction, strtol(token, &numend, 10));
+        action_prop_set_port(rule->raction, (unsigned short) strtol(token, &numend, 10));
+        goto end;
     }
 end:    
     return rule;
@@ -180,7 +181,7 @@ struct r_rule* parse_rules_file(const char *filename, unsigned int uid){
     /* TODO Add the ability to have an unordered list of rules */
     FILE *f;
     size_t len;
-    int linecount;
+    unsigned int linecount = 0;
     char line[LINE_SIZE];
     char *linep;
     
@@ -200,6 +201,12 @@ struct r_rule* parse_rules_file(const char *filename, unsigned int uid){
         linep = &line[0];
         skip_blanks(linep);
         if(*linep == '#'){
+            linecount++;
+            continue;
+        }
+        /* Skip empty lines */
+        if(*linep == '\n'){
+            linecount++;
             continue;
         }
         len = strlen(line);
@@ -218,7 +225,7 @@ struct r_rule* parse_rules_file(const char *filename, unsigned int uid){
         rule = rule_parse(line, uid);
         /* Syntax error */
         if(rule == NULL){
-            warn("Syntax error '%s':%u, ignored", filename, linecount);
+            warn("Syntax error %s:%u, ignored", filename, linecount);
             continue;
         }
         /* Commented line */
@@ -230,6 +237,7 @@ struct r_rule* parse_rules_file(const char *filename, unsigned int uid){
             tail->next = rule;
             tail = rule;
         }
+        linecount++;
     }
 end:    
     return head;

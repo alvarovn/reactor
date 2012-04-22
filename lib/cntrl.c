@@ -82,7 +82,27 @@ int connect_cntrl(){
 end:
     return psfd;
 }
-
+static int socket_write(int psfd, void *data, int size){
+    int zerocount = 0,
+        sent = 0,
+        error = 0;
+    void *tosend = data;
+    while((sent = reactor_write(psfd, tosend, size)) != size){
+        if(sent == 0) zerocount++;
+        else zerocount = 0;
+        
+        if(zerocount > MAX_ZERO_WRITES || sent == -1){
+            dbg_e("Error writing to the socket", NULL);
+            error = -1;
+            goto end;
+        }
+        tosend += sent;
+        if((size -= sent) == 0)
+            break;
+    }
+end:
+    return error;
+}
 int send_cntrl_msg(int psfd, const struct r_msg *msg){
     int error = 0;
     struct r_msg *response = NULL;
@@ -93,17 +113,17 @@ int send_cntrl_msg(int psfd, const struct r_msg *msg){
     
     if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) 
         dbg_e("signal() failed", NULL);
-    if(reactor_write(psfd, (const void *) &hd, sizeof(struct rmsg_hd)) != sizeof(struct rmsg_hd)){
-        dbg_e("Error writing to the socket", NULL);
+
+    if(socket_write(psfd, (void *) &hd, sizeof(struct rmsg_hd)) != 0){
         error = -1;
         goto end;
     }
+
     switch(msg->hd.mtype){
         case ADD_RULE:
         case EVENT:
         case RM_TRANS:
-            if(reactor_write(psfd, msg->msg, msg->hd.size) != msg->hd.size){
-                dbg_e("Error writing to the socket", NULL);
+            if(socket_write(psfd, msg->msg, msg->hd.size) != 0){
                 error = -1;
                 goto end;
             }

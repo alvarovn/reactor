@@ -62,7 +62,7 @@ void state_unref(struct reactor_d *reactor, State *ste){
         return;
     for(;ste->transitions != NULL;){
         aux = ste->transitions;
-        ste->transitions = trans_clist_free(reactor, aux);
+        ste->transitions = trans_clist_free_1(reactor, aux);
     }
 //     trans_clist_free_full(reactor, ste->transitions);
     state_unref(reactor, ste->fsminitial);

@@ -29,6 +29,8 @@
 /* TODO Group should be defined on a configuration file */
 
 #define REACTOR_PORT 6500
+#define REACTOR_PORT_STR "6500"
+#define PORT_DIGITS 5
 
 #define R_GRP "events"
 
@@ -64,7 +66,7 @@ struct cmd_action{
 };
 struct prop_action{
     char *addr;
-    unsigned int  port;
+    unsigned short port;
     RSList *enids;
 };
 
@@ -133,7 +135,7 @@ typedef struct cmd_action;
 
 Transition* trans_new(State *dest);
 bool trans_set_action(Transition *trans, struct r_action *action);
-Transition* trans_clist_free(struct reactor_d *reactor, Transition *trans);
+Transition* trans_clist_free_1(struct reactor_d *reactor, Transition *trans);
 bool trans_notice_event(Transition *trans);
 void trans_add_requisite(Transition *trans, EventNotice *en);
 const State* trans_get_dest(Transition *trans);
@@ -150,11 +152,13 @@ struct r_action* action_new(enum a_types atype);
 void action_free(struct r_action *raction);
 void action_do(struct r_action *raction);
 void action_cmd_set_cmd(struct r_action *raction, char *cmd);
-void action_prop_set_port(struct r_action *raction, unsigned int port);
+void action_prop_set_port(struct r_action *raction, unsigned short port);
 void action_prop_set_addr(struct r_action *raction, char *addr);
 void action_prop_set_enids(struct r_action *raction, RSList *enids);
 /* remote.c */
 
 int listen_remote();
 int connect_remote(char *host, int port);
+RSList* receive_remote_events(int psfd);
+int send_remote_events(int psfd, const RSList *eids);
 #endif

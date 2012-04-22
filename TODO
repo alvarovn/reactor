@@ -11,3 +11,5 @@
 - Unit and end-to-end tests
 
 - Refactorize to remove unneeded abstraction
+
+- Change sockets read() and write() to recv() and send()

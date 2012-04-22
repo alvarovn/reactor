@@ -101,13 +101,23 @@ static void cmd_execute(struct cmd_action *cmd){
     }
 }
 
+static void prop_execute(struct prop_action *prop){
+    int psfd;
+    if((psfd = connect_remote(prop->addr, prop->port)) == -1){
+        warn("Unable to reach '%s:%u' remote reactord", prop->addr, prop->port);
+        return;
+    }
+    send_remote_events(psfd, prop->enids);
+    close(psfd);
+}
+
 void action_do(struct r_action *raction){
     switch(raction->atype){
         case CMD:
             cmd_execute((struct cmd_action *) raction->action);
             break;
         case PROP:
-            
+            prop_execute((struct prop_action *) raction->action);
             break;
         default:
             /* CMD_NONE */
@@ -125,7 +135,7 @@ void action_prop_set_addr(struct r_action *raction, char *addr){
     action = (struct prop_action *) raction->action;
     action->addr = addr;
 }
-void action_prop_set_port(struct r_action *raction, unsigned int port){
+void action_prop_set_port(struct r_action *raction, unsigned short port){
     struct prop_action *action;
     action = (struct prop_action *) raction->action;
     action->port = port;

@@ -118,7 +118,7 @@ end:
     return success;
 }
 
-Transition* trans_clist_free(struct reactor_d *reactor, Transition *trans){
+Transition* trans_clist_free_1(struct reactor_d *reactor, Transition *trans){
     Transition *ret;
     if(trans == NULL) return NULL;
     if(trans->enrequisites != NULL)
