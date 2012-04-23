@@ -75,6 +75,7 @@ int main(int argc, char *argv[]) {
                 case NO_TRANS:
                     warn("Transition '%s' doesn't exist", msg.msg);
                 case ACK:
+                    dbg("Message sent", NULL);
                     break;
                 default:
                     warn("reactord is not working properly.");

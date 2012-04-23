@@ -1,9 +1,11 @@
 AM_CFLAGS =	$(GLIB_CFLAGS) \
 		$(LIBEVENT_CFLAGS) \
-		-I$(top_srcdir)/lib/
+		-I$(top_srcdir)/lib/ \
+		-pthread
 
 AM_LDFLAGS =	$(GLIB_LIBS) \
-		$(LIBEVENT_LIBS)
+		$(LIBEVENT_LIBS) \
+		-pthread
 ##############
 # libreactor #
 ##############

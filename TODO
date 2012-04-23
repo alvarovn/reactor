@@ -13,3 +13,6 @@
 - Refactorize to remove unneeded abstraction
 
 - Change sockets read() and write() to recv() and send()
+
+- 'Makefile.am' -> gcc -pthread flag won't necessarily work on other compiles, so it should be
+    replaced by an ACX_PTHREAD macro implementation.

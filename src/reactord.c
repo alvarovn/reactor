@@ -26,6 +26,7 @@
 #include <pwd.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 #include "reactor.h"
 
@@ -196,8 +197,63 @@ malformed:
 
 /* libevent control socket callbacks */
 
+static void attend_cntrl_msg_thread(void *arg){
+//     int psfd;
+//     int sfd = *((int *) arg);
+//     free((int *) arg);
+//     struct r_msg response;
+//     struct r_msg *msg;
+//     void *data;
+//     response.hd.mtype = ACK;
+//     response.hd.size = 0;
+//     response.msg = NULL;
+//     psfd = accept(sfd, NULL, NULL);
+//     if((msg = receive_cntrl_msg(psfd)) == NULL){
+//         err("Error in the communication with 'reactorctl'");
+//         goto end;
+//     }
+//     switch(msg->hd.mtype){
+//         case EVENT:
+//             reactor_event_handler(msg->msg);
+//             send_cntrl_msg(psfd, &response);
+//             free(msg->msg);
+//             break;
+//         case ADD_RULE:
+//             /* TODO Change uid to the user who sent the rule */
+//             data = (void *) rule_parse(msg->msg, 0);
+//             response.hd.mtype = reactor_add_rule_handler((struct r_rule *) data);
+//             rules_free((struct r_rule *) data);
+//             send_cntrl_msg(psfd, &response);
+//             free(msg->msg);
+//             break;
+//         case RM_TRANS:
+//             response.hd.mtype = reactor_rm_trans_handler(msg->msg);
+//             send_cntrl_msg(psfd, &response);
+//             free(msg->msg);
+//         default:
+//             break;
+//     }
+// end:
+//     close(psfd);
+//     
+//     free(msg);
+}
+
 static void attend_cntrl_msg(int sfd, short ev, void *arg){
+//     int s,
+//         *nsfd;
+//     pthread_t t1;
+//     if((nsfd = malloc(sizeof(int))) == NULL){
+//         dbg_e("Error on malloc() the control socket file descriptor", NULL);
+//         return;
+//     }
+//     *nsfd = sfd;
+//     s = pthread_create(&t1, NULL, attend_cntrl_msg_thread, (void *) nsfd);
+//     if(s != 0)
+//         dbg("Unable to create the thread to receive control messages", strerror(s));
     int psfd;
+//     int sfd = *((int *) arg);
+//     free((int *) arg);
     struct r_msg response;
     struct r_msg *msg;
     void *data;
@@ -236,7 +292,48 @@ end:
     free(msg);
 }
 
+static attend_remote_events_thread(void *arg){
+//     struct sockaddr addr;
+//     char ip[INET6_ADDRSTRLEN];
+//     int sfd = *((int *) arg);
+//     int psfd,
+//         addrlen = sizeof(struct sockaddr);
+//     RSList *eids;
+//     RSList *eidsp;
+//     
+//     free((int *)arg);
+//     ip[0] = NULL;
+//     if((psfd = accept(sfd, &addr, &addrlen)) == -1){
+//         dbg_e("Unable to stablish connection with remote reactord", NULL);
+//     }
+//     else inet_ntop(addr.sa_family, &addr, ip, INET6_ADDRSTRLEN);
+//     
+//     if((eids = receive_remote_events(psfd)) == NULL){
+//         goto end;
+//     }
+//     for(eidsp = eids; eidsp != NULL; eidsp = reactor_slist_next(eidsp)){
+//         reactor_event_handler(eidsp->data);
+//     }
+// end:
+//     while(eids != NULL){
+//         free(eids->data);
+//         eids = reactor_slist_delete_link(eids, eids);
+//     }
+//     close(psfd);
+}
+
 static void attend_remote_events(int sfd, short ev, void *arg){
+//     int s,
+//         *nsfd;
+//     pthread_t t1;
+//     if((nsfd = malloc(sizeof(int))) == NULL){
+//         dbg_e("Error on malloc() the remote socket file descriptor", NULL);
+//         return;
+//     }
+//     *nsfd = sfd;
+//     s = pthread_create(&t1, NULL, attend_remote_events_thread, (void *) nsfd);
+//     if(s != 0)
+//         dbg("Unable to create the thread to receive the events", strerror(s));
     struct sockaddr addr;
     char ip[INET6_ADDRSTRLEN];
     int psfd,
@@ -245,7 +342,7 @@ static void attend_remote_events(int sfd, short ev, void *arg){
     RSList *eidsp;
     
     ip[0] = NULL;
-    if(psfd = accept(psfd, &addr, &addrlen) == -1){
+    if((psfd = accept(sfd, &addr, &addrlen)) == -1){
         dbg_e("Unable to stablish connection with remote reactord", NULL);
     }
     else inet_ntop(addr.sa_family, &addr, ip, INET6_ADDRSTRLEN);

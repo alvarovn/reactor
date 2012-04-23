@@ -128,6 +128,10 @@ int send_cntrl_msg(int psfd, const struct r_msg *msg){
                 goto end;
             }
             response = receive_cntrl_msg(psfd);
+            if(response == NULL){
+                error = -1;
+                goto end;
+            }
             error = (int) response->hd.mtype;
             free(response->msg);
             free(response);
@@ -142,13 +146,15 @@ end:
 
 struct r_msg* receive_cntrl_msg(int psfd){
     int *sfd;
+    int count = 0;
     struct r_msg * rmsg = NULL;
 
     if((rmsg = (struct r_msg *) calloc(1, sizeof(struct r_msg))) == NULL){
         goto malloc_error;
     }
     rmsg->hd.size = 0;
-    if(reactor_read(psfd, (char *) &rmsg->hd, sizeof(struct rmsg_hd)) != sizeof(struct rmsg_hd)){
+    count = reactor_read(psfd, (char *) &rmsg->hd, sizeof(struct rmsg_hd));
+    if(count != sizeof(struct rmsg_hd)){
         dbg_e("Error reading from the socket", NULL);
         free(rmsg->msg);
         free(rmsg);

@@ -115,19 +115,24 @@ end:
 }
 
 RSList* receive_remote_events(int psfd){
-    RSList *eids;
+    RSList *eids = NULL;
     struct r_msg *rmsg;
+    struct r_msg response;
     struct sockaddr addr;
     int addrlen = sizeof(struct sockaddr);
     char ip[INET6_ADDRSTRLEN];
     
-    ip[0] = NULL;
+    response.hd.mtype = ACK;
+    response.hd.size = 0;
+    response.msg = "";
+    memset(ip, 0, INET6_ADDRSTRLEN);
     if(getpeername(psfd, &addr, &addrlen) == -1){
         dbg_e("Unable to retrieve the address from a remote reactord sending events", NULL);
     }
     else inet_ntop(addr.sa_family, &addr, ip, INET6_ADDRSTRLEN);
     rmsg = receive_cntrl_msg(psfd);
-    while(rmsg != NULL && rmsg->hd.mtype != EVENT){
+    while(rmsg != NULL && rmsg->hd.mtype == EVENT){
+        send_cntrl_msg(psfd, &response);
         eids = reactor_slist_prepend(eids, (void *) rmsg->msg);
         rmsg = receive_cntrl_msg(psfd);
     }
@@ -152,7 +157,7 @@ int send_remote_events(int psfd, const RSList *eids){
     for(eidsp = eids; eidsp != NULL; eidsp = reactor_slist_next(eidsp)){
         rmsg.msg = eidsp->data;
         rmsg.hd.size = strlen(eidsp->data);
-        if(send_cntrl_msg(psfd, &rmsg) != 0){
+        if(send_cntrl_msg(psfd, &rmsg) != ACK){
             error = -1;
             goto end;
         }
