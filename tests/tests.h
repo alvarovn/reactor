@@ -24,5 +24,6 @@
 #include <check.h>
 
 Suite* make_cntrl_suite(void);
+Suite* make_rules_suite(void);
 
 #endif

@@ -36,10 +36,20 @@
 
 #define RULES_FILE "reactor.rules"
 
-#define skip_blanks(c) \
-            while (*c == '\t' || *c == ' ') \
-                c+=sizeof(char);
-            
+// #define skip_blanks(c) \
+//             while (*c == '\t' || *c == ' ') \
+//                 c+=sizeof(char);
+#define skip_blanks(c, tl, sl, trim) \
+        if(trim){ \
+            while(c[tl] == '\t' || c[tl] == ' ' || c[tl] == '\n'){ \
+                if(tl == 0) c+=sizeof(char); \
+                else if(tl > 0){ \
+                    tl+=sizeof(char); \
+                    sl+=sizeof(char); \
+                } \
+            } \
+         }
+
 #define skip_noblanks(c, i) \
             while (c[i] != '\n' && c[i] != '\t' && c[i] != ' ' && c[i] != '&' && c[i] != '#' && c[i] != '\0') \
                 i++;
@@ -80,13 +90,41 @@ struct r_rule{
     struct r_rule *next;
 };
 
+struct rr_error{
+    int pos;
+    char *msg;
+    struct rr_error *next;
+};
+struct rr_token{
+    char *data;
+    struct rr_token *next;
+    struct rr_token *down;
+    int pos;
+};
+struct rr_expr{
+    int exprnum;
+    char tokensep;
+    char end;
+    bool trim;
+    struct rr_expr *innerexpr;
+    struct rr_expr *next;
+};
+struct rule{
+    char *line;
+    struct rr_expr *expr;
+    int linen;
+    char *file;
+    struct rr_token *tokens;
+    struct rr_error *errors;
+};
+
 struct r_event{
     char *eid;
 //     int uid;
-    /* In the future this field may contain more information about the font 
+    /* In the future this field may contain more information about the source 
      * than the pid.
      */ 
-//     pid_t fontpid;  
+//     pid_t sourcepid;  
 };
 typedef struct _transition Transition;
 typedef struct _remote Remote;

@@ -60,7 +60,8 @@ check_PROGRAMS =	$(TESTS)
 
 tests_tests_SOURCES = 	tests/tests.c \
 			tests/tests.h \
-			tests/cntrl-tests.c 
+			tests/cntrl-tests.c \
+			tests/rules-tests.c
 
 tests_tests_CFLAGS = 	@CHECK_CFLAGS@ \
 			-I$(top_srcdir)/src/ \

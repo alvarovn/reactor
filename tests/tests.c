@@ -25,6 +25,7 @@
 int main (void){
     int number_failed;
     SRunner *sr = srunner_create(make_cntrl_suite());
+    srunner_add_suite(sr, make_rules_suite());
     srunner_run_all(sr, CK_NORMAL);
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
