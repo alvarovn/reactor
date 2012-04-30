@@ -172,6 +172,10 @@ static int tokenize(char *line, struct rr_expr *expr,
             tokenlastchar = tokenize(linep, exprp, &((*tokenp)->down), errorsp);
             tokenp = &(*tokenp)->next;
             if(*errorsp != NULL){
+                while(*errorsp != NULL){
+                    (*errorsp)->pos += linep - line;
+                    errorsp = &(*errorsp)->next;
+                }
                 tokens_free(*tokens);
                 *tokens = NULL;
                 linep = line;
@@ -235,7 +239,7 @@ end:
     return (linep - line);
     
 error:
-    *errorsp = new_error(linep-line, errmsg);
+    *errorsp = new_error(linep-line-1, errmsg);
     errorsp = &(*errorsp)->next;
     linep = line;
     tokens_free(*tokens);
@@ -387,7 +391,7 @@ struct r_rule* parse_rules_file(const char *filename, unsigned int uid){
     /* TODO Add the ability to have an unordered list of rules */
     FILE *f;
     size_t len;
-    unsigned int linecount = 0;
+    unsigned int linecount = 1;
     char line[LINE_SIZE];
     int *linep;
     int dummy = 0;
