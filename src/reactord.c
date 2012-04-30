@@ -44,22 +44,47 @@ static enum rmsg_type reactor_add_rule_handler(struct r_rule *rule){
     EventNotice *en = NULL;
     bool init;
     enum rmsg_type cmt = ACK;
+    char *fromstr,
+         *tostr;
+    struct rr_token *eids;
     
+    // TODO Check errors
     if(rule == NULL){
         cmt = ARG_MALFORMED;
         warn("Rule malformed.");
         goto end;
     }
-        
-    init = (from = (State *) reactor_hash_table_lookup(reactor.states, rule->from)) == NULL;
+    if(rule->errors != NULL){
+        cmt = ARG_MALFORMED;
+        while(rule->errors != NULL){
+            if((rule->file != NULL) && (rule->linen >= 0)){
+                warn("%s:%i:%i: %s", rule->file, rule->linen, rule->errors->pos, rule->errors->msg);
+            }
+            else{
+                warn("%i: %s", rule->errors->pos, rule->errors->msg);
+            }
+            rule->errors = rule->errors->next;
+        }
+        goto end;
+    }
+    if(rule->tokens == NULL){
+        // Comment or empty line
+        // This is not valid by command line
+        warn("Empty or commented rule received");
+        cmt = ARG_MALFORMED;
+        goto end;
+    }
+    fromstr = (get_token(rule->tokens, RULE_FROM))->data;
+    tostr = (get_token(rule->tokens, RULE_TO))->data;
+    init = (from = (State *) reactor_hash_table_lookup(reactor.states, fromstr)) == NULL;
     if(init){
-        from = state_new(&reactor, rule->from);
+        from = state_new(&reactor, fromstr);
 //         state_set_fsminitial(from, from);
     }
     
-    to = (State *) reactor_hash_table_lookup(reactor.states, rule->to);
+    to = (State *) reactor_hash_table_lookup(reactor.states, tostr);
     if(to == NULL) {
-        to = state_new(&reactor, rule->to);
+        to = state_new(&reactor, tostr);
         fsminitial = (state_get_fsminitial(from) == NULL) ? from : state_get_fsminitial(from);
         state_set_fsminitial(to, fsminitial);
     }
@@ -76,22 +101,24 @@ static enum rmsg_type reactor_add_rule_handler(struct r_rule *rule){
     /* TODO     While we don't get from the event the shell to execute 
      *          the command, we should get the current shell and use it.
      */
-    trans_set_action(trans, rule->raction);
+    trans_set_action(trans, (struct r_action *)(get_token(rule->tokens, RULE_RACTION))->data);
 
-    for(; rule->enids != NULL; rule->enids = reactor_slist_next(rule->enids)){
-        en = (EventNotice *) reactor_hash_table_lookup(reactor.eventnotices, rule->enids->data);
+    for(eids = (get_token(rule->tokens, RULE_EVENTS))->down; eids != NULL; eids = eids->next){
+        en = (EventNotice *) reactor_hash_table_lookup(reactor.eventnotices, eids->data);
         if(en == NULL){
-            en = en_new(&reactor, rule->enids->data);
+            en = en_new(&reactor, eids->data);
         }
         trans_add_requisite(trans, en);
         /* As it is an initial transition it should also be a current transition */
         if(init) en_add_curr_trans(en, trans);
     }
     if(init){
-        info("New transition from initial state '%s' to state '%s'.", rule->from, rule->to);
+        info("New transition from initial state '%s' to state '%s'.", 
+             fromstr, tostr);
     }
     else{
-        info("New transition from state '%s' to state '%s'.", rule->from, rule->to);
+        info("New transition from state '%s' to state '%s'.", 
+             fromstr, tostr);
     }
     state_add_trans(from, trans);
 end:
@@ -273,7 +300,7 @@ static void attend_cntrl_msg(int sfd, short ev, void *arg){
             break;
         case ADD_RULE:
             /* TODO Change uid to the user who sent the rule */
-            data = (void *) rule_parse(msg->msg, 0);
+            data = (void *) rule_parse(msg->msg, NULL, -1, 0);
             response.hd.mtype = reactor_add_rule_handler((struct r_rule *) data);
             rules_free((struct r_rule *) data);
             send_cntrl_msg(psfd, &response);

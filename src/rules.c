@@ -25,23 +25,9 @@
 
 #include "reactor.h"
 
-void rules_free(struct r_rule* rule){
-    struct r_rule *aux;
-    
-    for(; rule != NULL; ){
-//         reactor_slist_free_full(rule->enids, free);
-        free(rule->from);
-        free(rule->to);
-//         action_free(rule->raction);
-        aux = rule->next;
-        free(rule);
-        rule = aux;
-    }
-}
-
-struct rr_token* new_token(char *data, struct rr_token *next, struct rr_token *down, int pos){
+struct rr_token* new_token(void *data, struct rr_token *next, struct rr_token *down, int pos){
     struct rr_token *token;
-    if((token = calloc(1, sizeof(struct token))) == NULL){
+    if((token = calloc(1, sizeof(struct rr_token))) == NULL){
         dbg_e("Error on malloc the new token", NULL);
         return NULL;
     }
@@ -60,11 +46,20 @@ void tokens_free(struct rr_token *tokens){
     free(tokens);
 }
 
+struct rr_token* get_token(struct rr_token *tokens, unsigned int tnum){
+    int i = 0;
+    while((i != tnum) && (tokens != NULL)){
+        tokens = tokens->next;
+        i++;
+    }
+    return tokens;
+}
+
 struct rr_error* new_error(int pos, char *msg){
     struct rr_error *error;
     
-    if((error = calloc(1, sizeof(struct error))) == NULL){
-        dbg_e("Error on malloc the new error", NULL);
+    if((error = calloc(1, sizeof(struct rr_error))) == NULL){
+        dbg_e("Error on malloc() the new error", NULL);
         return NULL;
     }
     error->pos = pos;
@@ -80,8 +75,43 @@ void errors_free(struct rr_error *errors){
     free(errors);
 }
 
+struct rr_expr* expr_new(int exprnum, char *tokensep, char *end, bool trim){
+    struct rr_expr* expr;
+    
+    if((expr = calloc(1, sizeof(struct rr_expr))) == NULL){
+        dbg_e("Error on malloc() an expression", NULL);
+        return NULL;
+    }
+    expr->exprnum = exprnum;
+    expr->tokensep = tokensep;
+    expr->end = end;
+    expr->trim = trim;
+    return expr;
+}
+
+void exprs_free(struct rr_expr *expr){
+    if(expr == NULL) return;
+    exprs_free(expr->next);
+    exprs_free(expr->subexpr);
+    free(expr);
+}
+
+void rules_free(struct r_rule *rrule){
+    if(rrule == NULL) return;
+    rules_free(rrule->next);
+    errors_free(rrule->errors);
+    tokens_free(rrule->tokens);
+    exprs_free(rrule->expr);
+    free(rrule->line);
+    free(rrule->file);
+    free(rrule);
+}
+
 /* TODO Very dirty tokenizer. Refactor. */
-static int tokenize(char *line, struct rr_expr *expr, struct rr_token **tokens, struct rr_error **errors){
+static int tokenize(char *line, struct rr_expr *expr, 
+                    struct rr_token **tokens, 
+                    struct rr_error **errors)
+{
     char *linep;
     
     struct rr_error **errorsp;
@@ -101,8 +131,8 @@ static int tokenize(char *line, struct rr_expr *expr, struct rr_token **tokens, 
     ){
         goto end;
     }
-    exprp = expr->innerexpr;
-    nextexpr = (exprp == NULL) ? 0 : exprp->exprnum;
+    exprp = expr->subexpr;
+    nextexpr = (exprp == NULL) ? -1 : exprp->exprnum;
     bool finished = false;
     
     linep = line;
@@ -114,19 +144,19 @@ static int tokenize(char *line, struct rr_expr *expr, struct rr_token **tokens, 
     skip_blanks(linep, tokenlastchar, spacelength, expr->trim);
     if(*linep == '\0' || *linep == '#') goto end;
         
-    exprcount = 1;
+    exprcount = 0;
     
     while(  (linep[tokenlastchar] != expr->end) && 
             (linep[tokenlastchar] != '\0') &&
             (linep[tokenlastchar] != '#')
-         ){
+    ){
         if(linep[tokenlastchar] == expr->tokensep){
             /* Separator */
             if((tokenlastchar - spacelength) < 1){
                 errmsg = "No token before the expression separator";
                 goto error;
             }
-            *tokenp = new_token(strndup(linep, tokenlastchar - spacelength),
+            *tokenp = new_token((void *)strndup(linep, tokenlastchar - spacelength),
                                 NULL, NULL, linep-line);
             tokenp = &(*tokenp)->next;
             exprcount++;
@@ -147,16 +177,20 @@ static int tokenize(char *line, struct rr_expr *expr, struct rr_token **tokens, 
                 linep = line;
                 goto end;
             }
+            if(tokenlastchar == 0){
+                errmsg = "The subexpression is empty";
+                goto error;
+            }
             exprcount++;
             linep += tokenlastchar;
             tokenlastchar = 0;
 
-            if(linep == exprp->end)
+            if(*linep == expr->end)
                 finished = true;
             else
                 linep++;
             exprp = exprp->next;
-            nextexpr = (exprp == NULL) ? 0 : exprp->exprnum;
+            nextexpr = (exprp == NULL) ? -1 : exprp->exprnum;
         }
         else{
             /* Non-space token char */
@@ -177,21 +211,26 @@ static int tokenize(char *line, struct rr_expr *expr, struct rr_token **tokens, 
     }
     if(tokenlastchar - spacelength > 0){
         /* Last token */
-        *tokenp = new_token(strndup(linep, tokenlastchar - spacelength),
+//         if(exprcount < nextexpr){
+//             errmsg = "Unexpected rule end";
+//             goto end;
+//         }
+        *tokenp = new_token((void *)strndup(linep, tokenlastchar - spacelength),
                     NULL, NULL, linep-line);
         tokenp = &(*tokenp)->next;
         spacelength = 0;
+        finished = true;
     }
-    else if(expr->tokensep != ' ' && !finished){
+    if(!finished){
         // If there is separator at the end of the expression
         errmsg = "Unexpected expression end";
         goto error;
     }
     linep += tokenlastchar;
-    if(*linep == '\0' && (expr->end != '\0')){
-        errmsg = "Unexpected rule end";
-        goto error;
-    }
+//     if(*linep == '\0' && (expr->end != '\0')){
+//         errmsg = "Unexpected rule end";
+//         goto error;
+//     }
 end:
     return (linep - line);
     
@@ -204,7 +243,7 @@ error:
     return 0;
 }
 
-void tokenize_rule(struct rule *rule){
+void tokenize_rule(struct r_rule *rule){
     int aux = 0;
     
     if(rule == NULL) return;
@@ -213,139 +252,135 @@ void tokenize_rule(struct rule *rule){
     tokenize(rule->line, rule->expr, &rule->tokens, &rule->errors);
 }
 
-struct r_rule* rule_parse(char *rulestr, uid_t uid){
-    struct r_rule * rule;
-    char *token, *tkaux;
-    int tokenlength,
-        dummy = 0;
-    bool final;
+/* TODO Needs refactor */
+struct r_rule* rule_parse(const char *line, const char *file, int linen, uid_t uid){
+    struct r_rule *rule;
+    struct rr_token *from,
+                    *to,
+                    *events,
+                    *actiontype,
+                    *action,
+                    *eventsp,
+                    *ractiontkn;
+    struct r_action *raction;
+    int eventsl,
+        tokenchari;
+    char *tokencharp,
+         *nnum;
     
-    if((rule = (struct r_rule *)calloc(1, sizeof(struct r_rule))) == NULL){
-        goto malloc_error;
-    }
-    
-    token = rulestr;
-    skip_blanks(token, dummy, dummy, true);
-    /* From state */
-    tokenlength = 0;
-    skip_noblanks(token, tokenlength);
-    if( token[tokenlength] == '\0' || 
-        token[tokenlength] == '&' || 
-        token[tokenlength] == '#' ||
-        token[tokenlength] == '\n'){
-            goto syntax_error;
-    }
-    rule->from = strndup(token, tokenlength);
-    token += tokenlength;
-    /* To state */
-    skip_blanks(token, dummy, dummy, true);
-    tokenlength = 0;
-    skip_noblanks(token, tokenlength);
-    if( token[tokenlength] == '\0' || 
-        token[tokenlength] == '&' || 
-        token[tokenlength] == '#' ||
-        token[tokenlength] == '\n'){
-            goto syntax_error;
-    }
-    rule->to = strndup(token, tokenlength);
-    token += tokenlength;
-    skip_blanks(token, dummy, dummy, true);
-    if( *token == '\0' || 
-        *token == '&' || 
-        *token == '#' ||
-        *token == '\n'){
-            goto syntax_error;
-    }
-    /* Event notice ids */
-    token -= sizeof(char);
-    do{
-        token += sizeof(char);
-        skip_blanks(token, dummy, dummy, true);
-        tokenlength = 0;
-        skip_noblanks(token, tokenlength);
-        rule->enids = reactor_slist_prepend(rule->enids, (void *) strndup(token, tokenlength));
-        token += tokenlength;
-        skip_blanks(token, dummy, dummy, true);
-    }while(*token == '&');
-    /* Action */
-    if( *token == '\0' || 
-        *token == '&' || 
-        *token == '#' ||
-        *token == '\n'){
-            goto syntax_error;
-    }
-    tokenlength = 0;
-    skip_noblanks(token, tokenlength);
-    if(!strncmp("NONE", token, tokenlength)){
-        token += tokenlength;
-        skip_blanks(token, dummy, dummy, true);
-        if(*token != '\0') goto syntax_error;
-        rule->raction = action_new(NONE);
+    if((rule = calloc(1, sizeof(struct r_rule))) == NULL){
+        dbg_e("Error on malloc() a rule", NULL);
+        rule = NULL;
         goto end;
     }
-    if(!strncmp("CMD", token, tokenlength)){
-        token += tokenlength;
-        skip_blanks(token, dummy, dummy, true);
-        if( *token == '\0' ||
-            *token == '&' ||
-            *token == '#' || 
-            *token == '\n' ){
-               goto syntax_error; 
-        }
-        tokenlength = 0;
-        while(token[tokenlength] != '\0' && token[tokenlength] != '#' && token[tokenlength] != '\n' ){
-            tokenlength++;
-            skip_blanks(token, dummy, dummy, true);
-            skip_noblanks(token, tokenlength);
-        }
-        rule->raction = action_new(CMD);
-        action_cmd_set_cmd(rule->raction, strndup(token, tokenlength));
+    
+    rule->line = strdup(line);
+    if(file == NULL) file = "";
+    rule->file = strdup(file);
+    rule->linen = linen;
+    rule->expr = expr_new(0, ' ', '\0', true);
+    rule->expr->subexpr = expr_new(RULE_EVENTS, '&', ' ', true);
+    rule->expr->subexpr->next = expr_new(RULE_ACTION, '\0', '\0', true);
+    
+    tokenize_rule(rule);
+    
+    if(rule->errors != NULL){
         goto end;
     }
-    if(!strncmp("PROP", token, tokenlength)){
-        char *numend;
-        unsigned short port;
-        token += tokenlength;
-        skip_blanks(token, dummy, dummy, true);
-        if( *token == '\0' ||
-            *token == '&' ||
-            *token == '#' || 
-            *token == '\n' ){
-               goto syntax_error; 
-        }
-        tokenlength = 0;
-        while(token[tokenlength] != ':' && token[tokenlength] != '\0') 
-            tokenlength++;
-        rule->raction = action_new(PROP);
-        action_prop_set_addr(rule->raction, strndup(token, tokenlength));
-        action_prop_set_enids(rule->raction, rule->enids);
-        if(token[tokenlength] == '\0'){
-            action_prop_set_port(rule->raction, REACTOR_PORT);
+    
+    if((from = get_token(rule->tokens, RULE_FROM)) == NULL){
+        //Empty line
+        goto end;
+    }
+    
+    if((to = get_token(rule->tokens, RULE_TO)) == NULL){
+        rule->errors = new_error(from->pos + strlen(from->data), "Unexpected rule end");
+        tokens_free(rule->tokens);
+        rule->tokens = NULL;
+        goto end;
+    }
+    if((events = get_token(rule->tokens, RULE_EVENTS)) == NULL){
+        rule->errors = new_error(to->pos + strlen(to->data), "Unexpected rule end");
+        tokens_free(rule->tokens);
+        rule->tokens = NULL;
+        goto end;
+    }
+    actiontype = get_token(rule->tokens, RULE_ACTION_TYPE);
+    
+    if((actiontype == NULL) || (strcmp(actiontype->data, "NONE") == 0)){
+        if(get_token(rule->tokens, RULE_ACTION) != NULL){
+            rule->errors = new_error(actiontype->pos + strlen(actiontype->data), "The rule was expected to finish here");
+            tokens_free(rule->tokens);
+            rule->tokens = NULL;
             goto end;
         }
-        token += tokenlength+1;
-        skip_blanks(token, dummy, dummy, true);
-        tokenlength = 0;
-        while(token[tokenlength] != '\0' && token[tokenlength] != ' '){
-            tokenlength++;
+        eventsl = 0;
+        for(eventsp = events->down; eventsp != NULL; eventsp = eventsp->next){
+            eventsl += strlen(eventsp->data);
         }
-        token[tokenlength] = '\0';
-        port = (int) strtol(token, &numend, 10);
-        if( *numend != NULL && *numend != '\n'){
-            /* Malformed port number */
-            goto syntax_error;
-        }
-        action_prop_set_port(rule->raction, (unsigned short) strtol(token, &numend, 10));
-        goto end;
+        ractiontkn = new_token(action_new(NONE), NULL, NULL, events->pos + eventsl);
     }
-end:    
+    else{
+        if((action = get_token(rule->tokens, RULE_ACTION)) == NULL){
+            rule->errors = new_error(actiontype->pos + strlen(actiontype->data), "Unexpected rule end");
+            tokens_free(rule->tokens);
+            rule->tokens = NULL;
+            goto end;
+        }
+        if(strcmp(actiontype->data, "CMD") == 0){
+            ractiontkn = new_token(action_new(CMD), NULL, NULL, actiontype->pos);
+            action_cmd_set_cmd((struct r_action *) ractiontkn->data, strdup(action->down->data));
+        }
+        else if(strcmp(actiontype->data, "PROP") == 0){
+            tokenchari = 0;
+            tokencharp = action->down->data;
+            skip_noblanks_and(tokencharp, tokenchari, ':');
+            ractiontkn = new_token(action_new(PROP), NULL, NULL, actiontype->pos);
+            action_prop_set_addr((struct r_action *) ractiontkn->data, strndup(action->down->data, tokenchari));
+            skip_blanks_simple(tokencharp, tokenchari);
+            switch( (int) ((char *) (action->down->data))[tokenchari]){
+                case ':':
+                    skip_blanks_simple(tokencharp, tokenchari);
+                    if(((char *)action->down->data)[tokenchari] == '\0'){
+                        rule->errors = new_error(action->pos + tokenchari, "Unexpected rule end");
+                        tokens_free(rule->tokens);
+                        rule->tokens = NULL;
+                        goto end;
+                    }
+                    tokenchari++;
+                    skip_blanks_simple(tokencharp, tokenchari);
+                    // TODO If after the port number there are invalid characters return error (second parameter of strtol)
+                    action_prop_set_port((struct r_action *)ractiontkn->data, 
+                                         (unsigned short) strtol(&((char*)action->down->data)[tokenchari], &nnum, 10));
+                    if(nnum != &((char*)action->down->data)[strlen(action->down->data)]){
+                        rule->errors = new_error(action->pos + tokenchari, "The port is not a number");
+                        tokens_free(rule->tokens);
+                        rule->tokens = NULL;
+                        goto end;
+                    }
+                    break;
+                case '\0':
+                    // Default port
+                    action_prop_set_port((struct r_action *)ractiontkn->data, REACTOR_PORT);
+                    break;
+                default:
+                    rule->errors = new_error(actiontype->pos, "Malformed address");
+                    tokens_free(rule->tokens);
+                    rule->tokens = NULL;
+                    goto end;
+            }
+        }
+        else{
+            rule->errors = new_error(action->pos + tokenchari, "Unexpected token");
+            tokens_free(rule->tokens);
+            rule->tokens = NULL;
+            goto end;
+        }
+    }
+    tokens_free(actiontype);
+    events->next = ractiontkn;
+end:
     return rule;
-syntax_error:
-    rules_free(rule);
-    return NULL;
-malloc_error:
-    dbg_e("Error on malloc the new parsed rule", NULL);
-    return NULL;
 }
 
 struct r_rule* parse_rules_file(const char *filename, unsigned int uid){
@@ -354,7 +389,7 @@ struct r_rule* parse_rules_file(const char *filename, unsigned int uid){
     size_t len;
     unsigned int linecount = 0;
     char line[LINE_SIZE];
-    char *linep;
+    int *linep;
     int dummy = 0;
     
     struct r_rule   *rule = NULL,
@@ -369,18 +404,18 @@ struct r_rule* parse_rules_file(const char *filename, unsigned int uid){
     }
     
     while (fgets(line, sizeof(line), f) != NULL) {
-        /* Skip comments */
-        linep = &line[0];
-        skip_blanks(linep, dummy, dummy, true);
-        if(*linep == '#'){
-            linecount++;
-            continue;
-        }
-        /* Skip empty lines */
-        if(*linep == '\n'){
-            linecount++;
-            continue;
-        }
+        linep = 0;
+//         /* Skip comments */
+//         skip_blanks_simple(line, linep);
+//         if(line[linep] == '#'){
+//             linecount++;
+//             continue;
+//         }
+//         /* Skip empty lines */
+//         if(line[linep] == '\n'){
+//             linecount++;
+//             continue;
+//         }
         len = strlen(line);
         while (line[len-2] == '\\') {
             if (fgets(&line[len-2], (sizeof(line)-len)+2, f) == NULL)
@@ -394,20 +429,21 @@ struct r_rule* parse_rules_file(const char *filename, unsigned int uid){
             err("Line too long '%s':%u, ignored", filename, linecount);
             continue;
         }
-        rule = rule_parse(line, uid);
-        /* Syntax error */
+        rule = rule_parse(line, filename, linecount, uid);
+        /* Malloc error */
         if(rule == NULL){
-            warn("Syntax error %s:%u, ignored", filename, linecount);
-            continue;
-        }
-        /* Commented line */
-        if(head == NULL || tail == NULL) {
-            head = rule;
-            tail = rule;
-        }    
-        else{
-            tail->next = rule;
-            tail = rule;
+            // TODO Error
+        }        
+        /* Not empty or commented line */
+        if(rule->tokens != NULL || rule->errors != NULL){
+            if(head == NULL || tail == NULL) {
+                head = rule;
+                tail = rule;
+            }    
+            else{
+                tail->next = rule;
+                tail = rule;
+            }
         }
         linecount++;
     }

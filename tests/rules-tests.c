@@ -29,21 +29,478 @@
 #include "action.c"
 #include "remote.c"
 #include "libreactor.h"
+#include <src/reactor.h>
 #include <stdio.h>
 
+// TODO Clean this mess won't hurt
+
+START_TEST(test_parser_prop_rule){
+    struct r_rule *rule;
+    struct rr_token *fromtkn,
+                    *totkn,
+                    *eventstkn,
+                    *actiontkn;
+    struct r_action *action;
+    struct prop_action *paction;
+    
+    char *line = "STATE_A STATE_B event1 PROP localhost   :   655";
+    rule = rule_parse(line, NULL, -1, 0);
+    
+    fail_unless((fromtkn = get_token(rule->tokens, RULE_FROM)) != NULL);
+    fail_unless(strcmp((char *)fromtkn->data, "STATE_A") == 0);
+    
+    fail_unless((totkn = get_token(rule->tokens, RULE_TO)) != NULL);
+    fail_unless(strcmp((char *)totkn->data, "STATE_B") == 0);
+    
+    fail_unless((eventstkn = get_token(rule->tokens, RULE_EVENTS)) != NULL);
+    fail_unless((eventstkn = eventstkn->down) != NULL);
+    
+    fail_unless(get_token(eventstkn, 0) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn, 0))->data, "event1") == 0);
+    
+    fail_unless((get_token(eventstkn, 0))->next == NULL);
+    fail_unless((get_token(eventstkn, 0))->down == NULL);
+    
+    fail_unless((actiontkn = get_token(rule->tokens, RULE_RACTION)) != NULL);
+    fail_unless((action = (struct r_action *) actiontkn->data) != NULL);
+    
+    fail_unless(actiontkn->next == NULL);
+    fail_unless(actiontkn->down == NULL);
+    
+    fail_unless(action->atype == PROP);
+    paction = (struct prop_action *)action->action;
+    fail_unless(strcmp(paction->addr, "localhost") == 0,
+        "\"localhost\" address expected instead of \"%s\"", paction->addr
+    );
+    fail_unless(paction->port == 655,
+        "\"655\" port expected instead of \"%s\"", paction->port
+    );
+    
+    rules_free(rule);
+    
+    line = "STATE_A STATE_B event1 PROP localhost";
+    rule = rule_parse(line, NULL, -1, 0);
+    
+    fail_unless((fromtkn = get_token(rule->tokens, RULE_FROM)) != NULL);
+    fail_unless(strcmp((char *)fromtkn->data, "STATE_A") == 0);
+    
+    fail_unless((totkn = get_token(rule->tokens, RULE_TO)) != NULL);
+    fail_unless(strcmp((char *)totkn->data, "STATE_B") == 0);
+    
+    fail_unless((eventstkn = get_token(rule->tokens, RULE_EVENTS)) != NULL);
+    fail_unless((eventstkn = eventstkn->down) != NULL);
+    
+    fail_unless(get_token(eventstkn, 0) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn, 0))->data, "event1") == 0);
+    
+    fail_unless((get_token(eventstkn, 0))->next == NULL);
+    fail_unless((get_token(eventstkn, 0))->down == NULL);
+    
+    fail_unless((actiontkn = get_token(rule->tokens, RULE_RACTION)) != NULL);
+    fail_unless((action = (struct r_action *) actiontkn->data) != NULL);
+    
+    fail_unless(actiontkn->next == NULL);
+    fail_unless(actiontkn->down == NULL);
+    
+    fail_unless(action->atype == PROP);
+    paction = (struct prop_action *)action->action;
+    fail_unless(strcmp(paction->addr, "localhost") == 0);
+    fail_unless(paction->port == 6500);
+    
+    rules_free(rule);
+    
+    line = "STATE_A STATE_B event1 PROP";
+    rule = rule_parse(line, NULL, -1, 0);
+    
+    fail_unless(rule != NULL);
+    fail_unless(rule->errors != NULL);
+    fail_unless(rule->tokens == NULL);
+    
+    rules_free(rule);
+    
+    line = "STATE_A STATE_B event1 PROP localhost:34pp";
+    rule = rule_parse(line, NULL, -1, 0);
+    
+    fail_unless(rule != NULL);
+    fail_unless(rule->errors != NULL);
+    fail_unless(rule->tokens == NULL);
+    
+    rules_free(rule);
+}
+END_TEST
+
+START_TEST(test_parser_none_rule){
+    struct r_rule *rule;
+    struct rr_token *fromtkn,
+                    *totkn,
+                    *eventstkn,
+                    *actiontkn;
+    struct r_action *action;
+    
+    char *line = "STATE_A STATE_B event1";
+    rule = rule_parse(line, NULL, -1, 0);
+    
+    fail_unless(rule != NULL);
+    
+    fail_unless(rule->errors == NULL);
+    
+    fail_unless((fromtkn = get_token(rule->tokens, RULE_FROM)) != NULL);
+    fail_unless(strcmp((char *)fromtkn->data, "STATE_A") == 0);
+    
+    fail_unless((totkn = get_token(rule->tokens, RULE_TO)) != NULL);
+    fail_unless(strcmp((char *)totkn->data, "STATE_B") == 0);
+    
+    fail_unless((eventstkn = get_token(rule->tokens, RULE_EVENTS)) != NULL);
+    fail_unless((eventstkn = eventstkn->down) != NULL);
+    
+    fail_unless(get_token(eventstkn, 0) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn, 0))->data, "event1") == 0);
+    
+    fail_unless((get_token(eventstkn, 0))->next == NULL);
+    fail_unless((get_token(eventstkn, 0))->down == NULL);
+    
+    fail_unless((actiontkn = get_token(rule->tokens, RULE_RACTION)) != NULL);
+    fail_unless((action = (struct r_action *) actiontkn->data) != NULL);
+    
+    fail_unless(actiontkn->next == NULL);
+    fail_unless(actiontkn->down == NULL);
+    
+    fail_unless(action->atype == NONE);
+    
+    rules_free(rule);
+    line = "STATE_A STATE_B event1 NONE";
+    rule = rule_parse(line, NULL, -1, 0);
+    
+    fail_unless(rule != NULL);
+    
+    fail_unless(rule->errors == NULL);
+    
+    fail_unless((fromtkn = get_token(rule->tokens, RULE_FROM)) != NULL);
+    fail_unless(strcmp((char *)fromtkn->data, "STATE_A") == 0);
+    
+    fail_unless((totkn = get_token(rule->tokens, RULE_TO)) != NULL);
+    fail_unless(strcmp((char *)totkn->data, "STATE_B") == 0);
+    
+    fail_unless((eventstkn = get_token(rule->tokens, RULE_EVENTS)) != NULL);
+    fail_unless((eventstkn = eventstkn->down) != NULL);
+    
+    fail_unless(get_token(eventstkn, 0) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn, 0))->data, "event1") == 0);
+    
+    fail_unless((get_token(eventstkn, 0))->next == NULL);
+    fail_unless((get_token(eventstkn, 0))->down == NULL);
+    
+    fail_unless((actiontkn = get_token(rule->tokens, RULE_RACTION)) != NULL);
+    fail_unless((action = (struct r_action *) actiontkn->data) != NULL);
+    
+    fail_unless(actiontkn->next == NULL);
+    fail_unless(actiontkn->down == NULL);
+    
+    fail_unless(action->atype == NONE);
+    
+    rules_free(rule);
+    
+    line = "STATE_A STATE_B event1 NONE this shouldn't be here";
+    rule = rule_parse(line, NULL, -1, 0);
+    
+    fail_unless(rule != NULL);
+    
+    fail_unless(rule->errors != NULL);
+    fail_unless(rule->tokens == NULL);
+    
+    rules_free(rule);
+}
+END_TEST
+
+START_TEST(test_parser_cmd_rule){
+    struct r_rule *rule;
+    struct rr_token *fromtkn,
+                    *totkn,
+                    *eventstkn,
+                    *actiontkn;
+    struct r_action *action;
+    struct cmd_action *cmdaction;
+    
+    char *line = "STATE_A STATE_B event1& event2 &event3& event4 CMD echo \"test\" >> /tmp/test";
+    rule = rule_parse(line, NULL, -1, 0);
+    fail_unless(rule != NULL);
+    
+    fail_unless(rule->errors == NULL);
+    
+    fail_unless((fromtkn = get_token(rule->tokens, RULE_FROM)) != NULL);
+    fail_unless(strcmp((char *)fromtkn->data, "STATE_A") == 0);
+    
+    fail_unless((totkn = get_token(rule->tokens, RULE_TO)) != NULL);
+    fail_unless(strcmp((char *)totkn->data, "STATE_B") == 0);
+    
+    fail_unless((eventstkn = get_token(rule->tokens, RULE_EVENTS)) != NULL);
+    fail_unless((eventstkn = eventstkn->down) != NULL);
+    
+    fail_unless(get_token(eventstkn, 0) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn, 0))->data, "event1") == 0);
+    
+    fail_unless(get_token(eventstkn, 1) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn, 1))->data, "event2") == 0);
+    
+    fail_unless(get_token(eventstkn, 2) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn, 2))->data, "event3") == 0);
+    
+    fail_unless(get_token(eventstkn, 3) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn, 3))->data, "event4") == 0);
+    
+    fail_unless((actiontkn = get_token(rule->tokens, RULE_RACTION)) != NULL);
+    fail_unless((action = (struct r_action *) actiontkn->data) != NULL);
+    
+    fail_unless(actiontkn->next == NULL);
+    fail_unless(actiontkn->down == NULL);
+    
+    fail_unless(action->atype == CMD);
+    cmdaction = (struct cmd_action *)action->action;
+    fail_unless(strcmp(cmdaction->cmd, "echo \"test\" >> /tmp/test") == 0);
+    
+    rules_free(rule);
+    
+    line = "STATE_A STATE_B event1& event2 &event3& event4 CMD";
+    rule = rule_parse(line, NULL, -1, 0);
+    
+    fail_unless(rule != NULL);
+    fail_unless(rule->errors != NULL);
+    fail_unless(rule->tokens == NULL);
+}
+END_TEST
+
+START_TEST(test_tokenizer_subexp_end){
+    struct r_rule rule;
+    struct rr_expr rexpr;
+    struct rr_expr subrexpr;
+    
+    rexpr.exprnum = 0;
+    rexpr.tokensep = ' ';
+    rexpr.end = '\0';
+    rexpr.trim = true;
+    rexpr.next = NULL;
+    rexpr.subexpr = &subrexpr;
+    
+    subrexpr.exprnum = 1;
+    subrexpr.tokensep = '|';
+    subrexpr.end = ' ';
+    subrexpr.trim = true;
+    subrexpr.next = NULL;
+    subrexpr.subexpr = NULL;
+    
+    rule.line = "A B | C";
+    rule.expr = &rexpr;
+    
+    tokenize_rule(&rule);
+    
+    fail_unless(rule.errors == NULL);
+    fail_unless(rule.tokens != NULL);
+    
+    fail_unless(strcmp(rule.tokens->data, "A") == 0);
+    fail_unless(rule.tokens->next != NULL);
+    fail_unless(rule.tokens->down == NULL);
+    
+    fail_unless(rule.tokens->next->data == NULL);
+    fail_unless(rule.tokens->next->next == NULL);
+    fail_unless(rule.tokens->next->down != NULL);
+    
+    fail_unless(strcmp(rule.tokens->next->down->data, "B") == 0);
+    fail_unless(rule.tokens->next->down->next != NULL);
+    fail_unless(rule.tokens->next->down->down == NULL);
+    
+    fail_unless(strcmp(rule.tokens->next->down->next->data, "C") == 0);
+    fail_unless(rule.tokens->next->down->next->next == NULL);
+    fail_unless(rule.tokens->next->down->next->down == NULL);
+    
+    tokens_free(rule.tokens);
+    
+    rule.line = "A B";
+    
+    tokenize_rule(&rule);
+    
+    fail_unless(rule.errors == NULL);
+    fail_unless(rule.tokens != NULL);
+    
+    fail_unless(strcmp(rule.tokens->data, "A") == 0);
+    fail_unless(rule.tokens->next != NULL);
+    fail_unless(rule.tokens->down == NULL);
+    
+    fail_unless(rule.tokens->next->data == NULL);
+    fail_unless(rule.tokens->next->next == NULL);
+    fail_unless(rule.tokens->next->down != NULL);
+    
+    fail_unless(strcmp(rule.tokens->next->down->data, "B") == 0);
+    fail_unless(rule.tokens->next->down->next == NULL);
+    fail_unless(rule.tokens->next->down->down == NULL);
+    
+    tokens_free(rule.tokens);
+}
+END_TEST
+
+START_TEST(test_tokenizer_sep_end){
+    struct r_rule rule;
+    struct rr_expr rexpr;
+    struct rr_expr subrexpr;
+    
+    rexpr.exprnum = 0;
+    rexpr.tokensep = '&';
+    rexpr.end = '\0';
+    rexpr.trim = true;
+    rexpr.next = NULL;
+    rexpr.subexpr = &subrexpr;
+    
+    subrexpr.exprnum = 2;
+    subrexpr.tokensep = '|';
+    subrexpr.end = '&';
+    subrexpr.trim = true;
+    subrexpr.next = NULL;
+    subrexpr.subexpr = NULL;
+    
+    rule.line = "A & B & C | D | & E";
+    rule.expr = &rexpr;
+    
+    tokenize_rule(&rule);
+    
+    fail_unless(rule.errors != NULL);
+    fail_unless(rule.tokens == NULL);
+    
+    errors_free(rule.errors);
+    
+    rule.line = "A & B & C | D &";
+    
+    tokenize_rule(&rule);
+    
+    fail_unless(rule.errors != NULL);
+    fail_unless(rule.tokens == NULL);
+    
+    errors_free(rule.errors);
+    
+    rule.line = "A & B & ";
+    
+    tokenize_rule(&rule);
+    
+    fail_unless(rule.errors != NULL);
+    fail_unless(rule.tokens == NULL);
+    
+    errors_free(rule.errors);
+}
+END_TEST
+
+START_TEST(test_tokenizer_tokens_lack){
+    struct r_rule rule;
+    struct rr_expr rexpr;
+    struct rr_expr subrexpr;
+    struct rr_expr subrexpr2;
+    
+    rexpr.exprnum = 0;
+    rexpr.tokensep = '|';
+    rexpr.end = '\0';
+    rexpr.trim = true;
+    rexpr.next = NULL;
+    rexpr.subexpr = &subrexpr;
+    
+    subrexpr.exprnum = 2;
+    subrexpr.tokensep = '&';
+    subrexpr.end = '|';
+    subrexpr.trim = true;
+    subrexpr.next = &subrexpr;
+    subrexpr.subexpr = NULL;
+    
+    subrexpr2.exprnum = 3;
+    subrexpr2.tokensep = '\0';
+    subrexpr2.end = '\0';
+    subrexpr2.trim = true;
+    subrexpr2.next = NULL;
+    subrexpr2.subexpr = NULL;
+    
+    rule.expr = &rexpr;
+    rule.line = "A | B";
+    
+    tokenize_rule(&rule);
+    
+    fail_unless(rule.errors == NULL);
+    fail_unless(rule.tokens != NULL);
+    
+    fail_unless(strcmp(rule.tokens->data, "A") == 0);
+    fail_unless(rule.tokens->down == NULL);
+    fail_unless(rule.tokens->next != NULL);
+    
+    fail_unless(strcmp(rule.tokens->next->data, "B") == 0);
+    fail_unless(rule.tokens->next->down == NULL);
+    fail_unless(rule.tokens->next->next == NULL);
+    
+    tokens_free(rule.errors);
+        
+    rule.line = "A | B | C";
+       
+    tokenize_rule(&rule);
+    
+    fail_unless(rule.errors == NULL);
+    fail_unless(rule.tokens != NULL);
+    
+    fail_unless(strcmp(rule.tokens->data, "A") == 0);
+    fail_unless(rule.tokens->down == NULL);
+    fail_unless(rule.tokens->next != NULL);
+    
+    fail_unless(strcmp(rule.tokens->next->data, "B") == 0);
+    fail_unless(rule.tokens->next->down == NULL);
+    fail_unless(rule.tokens->next->next != NULL);
+    
+    fail_unless(rule.tokens->next->next->data == NULL);
+    fail_unless(rule.tokens->next->next->next == NULL);
+    fail_unless(rule.tokens->next->next->down != NULL);
+    
+    fail_unless(strcmp(rule.tokens->next->next->down->data, "C") == 0);
+    fail_unless(rule.tokens->next->next->down->next == NULL);
+    fail_unless(rule.tokens->next->next->down->down == NULL);
+    
+    tokens_free(rule.errors);
+}
+END_TEST
+
+START_TEST(test_tokenizer_empty_subexpr){
+    struct r_rule rule;
+    struct rr_expr rexpr;
+    struct rr_expr subrexpr;
+    
+    rexpr.exprnum = 0;
+    rexpr.tokensep = '|';
+    rexpr.end = '\0';
+    rexpr.trim = true;
+    rexpr.next = NULL;
+    rexpr.subexpr = &subrexpr;
+    
+    subrexpr.exprnum = 2;
+    subrexpr.tokensep = '&';
+    subrexpr.end = '|';
+    subrexpr.trim = true;
+    subrexpr.next = NULL;
+    subrexpr.subexpr = NULL;
+    
+    rule.expr = &rexpr;
+    rule.line = "A | B | | C";
+    
+    tokenize_rule(&rule);
+    
+    fail_unless(rule.errors != NULL);
+    fail_unless(rule.tokens == NULL);
+    errors_free(rule.errors);
+}
+END_TEST
+
 START_TEST(test_tokenizer_comments){
-    struct rule rule;
+    struct r_rule rule;
     struct rr_expr rexpr;
     
     rule.expr = &rexpr;
     rule.line = "A | B # This is a very simple rule";
     
-    rexpr.exprnum = 1;
+    rexpr.exprnum = 0;
     rexpr.tokensep = '|';
     rexpr.end = '\0';
     rexpr.trim = true;
     rexpr.next = NULL;
-    rexpr.innerexpr = NULL;
+    rexpr.subexpr = NULL;
     
     tokenize_rule(&rule);
     
@@ -71,26 +528,26 @@ START_TEST(test_tokenizer_comments){
 END_TEST
 
 START_TEST(test_tokenizer_notrim){
-    struct rule rule;
+    struct r_rule rule;
     struct rr_expr rexpr;
     struct rr_expr iexpr;
     
     rule.expr = &rexpr;
     rule.line = "A  |B| C|z y x| D";
     
-    rexpr.exprnum = 1;
+    rexpr.exprnum = 0;
     rexpr.tokensep = '|';
     rexpr.end = '\0';
     rexpr.trim = false;
     rexpr.next = NULL;
-    rexpr.innerexpr = &iexpr;
+    rexpr.subexpr = &iexpr;
     
-    iexpr.exprnum = 4;
+    iexpr.exprnum = 3;
     iexpr.tokensep = ' ';
     iexpr.end = '|';
     iexpr.trim = false;
     iexpr.next = NULL;
-    iexpr.innerexpr = NULL;
+    iexpr.subexpr = NULL;
     
     tokenize_rule(&rule);
     
@@ -134,18 +591,18 @@ START_TEST(test_tokenizer_notrim){
 END_TEST
 
 START_TEST(test_tokenizer_empty_rule){
-    struct rule rule;
+    struct r_rule rule;
     struct rr_expr rexpr;
     
     rule.expr = &rexpr;
     rule.line = " ";
     
-    rexpr.exprnum = 1;
+    rexpr.exprnum = 0;
     rexpr.tokensep = '&';
     rexpr.end = '\0';
     rexpr.trim = true;
     rexpr.next = NULL;
-    rexpr.innerexpr = NULL;
+    rexpr.subexpr = NULL;
     
     tokenize_rule(&rule);
     
@@ -154,9 +611,9 @@ START_TEST(test_tokenizer_empty_rule){
 }
 END_TEST
 
-START_TEST(test_tokenizer_reactor_wrong_rules){
+START_TEST(test_tokenizer_empty_token){
     // Return the correct error and everything else clean
-    struct rule rrule;
+    struct r_rule rrule;
     struct rr_expr rexpr;
     struct rr_expr evexpr;
     struct rr_expr actexpr;
@@ -164,26 +621,26 @@ START_TEST(test_tokenizer_reactor_wrong_rules){
     rrule.line = "A B e1 & & e5 PROP localhost";
     rrule.expr = &rexpr;
     
-    rexpr.exprnum = 1;
+    rexpr.exprnum = 0;
     rexpr.tokensep = ' ';
     rexpr.end = '\0';
     rexpr.trim = true;
     rexpr.next = NULL;
-    rexpr.innerexpr = &evexpr;
+    rexpr.subexpr = &evexpr;
     
-    evexpr.exprnum = 3;
+    evexpr.exprnum = 2;
     evexpr.tokensep = '&';
     evexpr.end = ' ';
     evexpr.trim = true;
     evexpr.next = &actexpr;
-    evexpr.innerexpr = NULL;
+    evexpr.subexpr = NULL;
     
-    actexpr.exprnum = 5;
+    actexpr.exprnum = 4;
     actexpr.tokensep = '\0';
     actexpr.end = '\0';
     actexpr.trim = true;
     actexpr.next = NULL;
-    actexpr.innerexpr = NULL;
+    actexpr.subexpr = NULL;
     
     tokenize_rule(&rrule);
     
@@ -202,7 +659,7 @@ START_TEST(test_tokenizer_reactor_wrong_rules){
 END_TEST
 
 START_TEST(test_tokenizer_reactor_rule_short){
-    struct rule rrule;
+    struct r_rule rrule;
     struct rr_expr rexpr;
     struct rr_expr evexpr;
     struct rr_expr actexpr;
@@ -212,26 +669,26 @@ START_TEST(test_tokenizer_reactor_rule_short){
     rrule.line = "A B e1 PROP localhost";
     rrule.expr = &rexpr;
     
-    rexpr.exprnum = 1;
+    rexpr.exprnum = 0;
     rexpr.tokensep = ' ';
     rexpr.end = '\0';
     rexpr.trim = true;
     rexpr.next = NULL;
-    rexpr.innerexpr = &evexpr;
+    rexpr.subexpr = &evexpr;
     
-    evexpr.exprnum = 3;
+    evexpr.exprnum = 2;
     evexpr.tokensep = '&';
     evexpr.end = ' ';
     evexpr.trim = true;
     evexpr.next = &actexpr;
-    evexpr.innerexpr = NULL;
+    evexpr.subexpr = NULL;
     
-    actexpr.exprnum = 5;
+    actexpr.exprnum = 4;
     actexpr.tokensep = '\0';
     actexpr.end = '\0';
     actexpr.trim = true;
     actexpr.next = NULL;
-    actexpr.innerexpr = NULL;
+    actexpr.subexpr = NULL;
     
     tokenize_rule(&rrule);
     
@@ -281,7 +738,7 @@ START_TEST(test_tokenizer_reactor_rule_short){
 END_TEST
 
 START_TEST(test_tokenizer_reactor_rule_long){
-    struct rule rrule;
+    struct r_rule rrule;
     struct rr_expr rexpr;
     struct rr_expr evexpr;
     struct rr_expr actexpr;
@@ -291,26 +748,26 @@ START_TEST(test_tokenizer_reactor_rule_long){
     rrule.line = "A  B e1 &e2 & e3&e4& e5  CMD echo \"A->B\" >> /tmp/test";
     rrule.expr = &rexpr;
     
-    rexpr.exprnum = 1;
+    rexpr.exprnum = 0;
     rexpr.tokensep = ' ';
     rexpr.end = '\0';
     rexpr.trim = true;
     rexpr.next = NULL;
-    rexpr.innerexpr = &evexpr;
+    rexpr.subexpr = &evexpr;
     
-    evexpr.exprnum = 3;
+    evexpr.exprnum = 2;
     evexpr.tokensep = '&';
     evexpr.end = ' ';
     evexpr.trim = true;
     evexpr.next = &actexpr;
-    evexpr.innerexpr = NULL;
+    evexpr.subexpr = NULL;
     
-    actexpr.exprnum = 5;
+    actexpr.exprnum = 4;
     actexpr.tokensep = '\0';
     actexpr.end = '\0';
     actexpr.trim = true;
     actexpr.next = NULL;
-    actexpr.innerexpr = NULL;
+    actexpr.subexpr = NULL;
     
     tokenize_rule(&rrule);
 
@@ -391,12 +848,18 @@ Suite* make_rules_suite(void){
     /* Core test case */
 
     TCase *tc_core = tcase_create("Core");
+    tcase_add_test(tc_core, test_tokenizer_subexp_end);
+    tcase_add_test(tc_core, test_tokenizer_sep_end);
     tcase_add_test(tc_core, test_tokenizer_reactor_rule_long);
     tcase_add_test(tc_core, test_tokenizer_reactor_rule_short);
-    tcase_add_test(tc_core, test_tokenizer_reactor_wrong_rules);
-    tcase_add_test(tc_core, test_tokenizer_empty_rule);
+    tcase_add_test(tc_core, test_tokenizer_empty_token);
     tcase_add_test(tc_core, test_tokenizer_comments);
-    
+    tcase_add_test(tc_core, test_tokenizer_tokens_lack);
+    tcase_add_test(tc_core, test_tokenizer_empty_subexpr);
+    tcase_add_test(tc_core, test_tokenizer_empty_rule);
+    tcase_add_test(tc_core, test_parser_cmd_rule);
+    tcase_add_test(tc_core, test_parser_none_rule);
+    tcase_add_test(tc_core, test_parser_prop_rule);
     suite_add_tcase(s, tc_core);
     return s;
 }

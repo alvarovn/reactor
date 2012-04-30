@@ -44,6 +44,7 @@ struct r_action* action_new(enum a_types atype){
             }
             break;
         default:
+            // NONE
             break;
     }
     return raction;

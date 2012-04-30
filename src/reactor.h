@@ -32,6 +32,13 @@
 #define REACTOR_PORT_STR "6500"
 #define PORT_DIGITS 5
 
+#define RULE_FROM 0
+#define RULE_TO 1
+#define RULE_EVENTS 2
+#define RULE_ACTION_TYPE 3
+#define RULE_RACTION 3
+#define RULE_ACTION 4
+
 #define R_GRP "events"
 
 #define RULES_FILE "reactor.rules"
@@ -40,19 +47,34 @@
 //             while (*c == '\t' || *c == ' ') \
 //                 c+=sizeof(char);
 #define skip_blanks(c, tl, sl, trim) \
-        if(trim){ \
-            while(c[tl] == '\t' || c[tl] == ' ' || c[tl] == '\n'){ \
-                if(tl == 0) c+=sizeof(char); \
-                else if(tl > 0){ \
-                    tl+=sizeof(char); \
-                    sl+=sizeof(char); \
+            if(trim){ \
+                while(c[tl] == '\t' || c[tl] == ' ' || c[tl] == '\n'){ \
+                    if(tl == 0) c+=sizeof(char); \
+                    else if(tl > 0){ \
+                        tl+=sizeof(char); \
+                        sl+=sizeof(char); \
+                    } \
                 } \
-            } \
-         }
+            }
 
-#define skip_noblanks(c, i) \
-            while (c[i] != '\n' && c[i] != '\t' && c[i] != ' ' && c[i] != '&' && c[i] != '#' && c[i] != '\0') \
-                i++;
+#define skip_blanks_simple(c, i) \
+            while(c[i] == '\t' || c[i] == ' ' || c[i] == '\n'){ \
+                i+=sizeof(char); \
+            }
+                
+// #define skip_noblanks(c, i) \
+//             while (c[i] != '\n' && c[i] != '\t' && c[i] != ' ' && c[i] != '&' && c[i] != '#' && c[i] != '\0') \
+//                 i++;
+
+#define skip_noblanks_and(c, i, d) \
+            while(  (c[i] != '\n') && \
+                    (c[i] != '\t') && \
+                    (c[i] != ' ') && \
+                    (c[i] != '\0') && \
+                    (c[i] != d) \
+            ){ \
+                i++; \
+            }
             
 struct reactor_d{
     GHashTable *eventnotices;
@@ -80,23 +102,13 @@ struct prop_action{
     RSList *enids;
 };
 
-struct r_rule{
-    struct r_action *raction;
-    RSList *enids; 
-    char *to; 
-    char *from;
-    unsigned int line;
-    /* Linked list */
-    struct r_rule *next;
-};
-
 struct rr_error{
     int pos;
     char *msg;
     struct rr_error *next;
 };
 struct rr_token{
-    char *data;
+    void *data;
     struct rr_token *next;
     struct rr_token *down;
     int pos;
@@ -106,16 +118,17 @@ struct rr_expr{
     char tokensep;
     char end;
     bool trim;
-    struct rr_expr *innerexpr;
+    struct rr_expr *subexpr;
     struct rr_expr *next;
 };
-struct rule{
+struct r_rule{
     char *line;
     struct rr_expr *expr;
     int linen;
     char *file;
     struct rr_token *tokens;
     struct rr_error *errors;
+    struct r_rule *next;
 };
 
 struct r_event{
@@ -140,8 +153,15 @@ void free_users(struct r_user*);
 
 /* rules.c */
 #define LINE_SIZE 16384
-struct r_rule* rule_parse(char *rulestr, uid_t uid);
-void rules_free(struct r_rule *rule);
+void tokens_free(struct rr_token *tokens);
+struct rr_token* get_token(struct rr_token *tokens, unsigned int tnum);
+struct rr_error* new_error(int pos, char *msg);
+void errors_free(struct rr_error *errors);
+struct rr_expr* expr_new(int exprnum, char *tokensep, char *end, bool trim);
+void exprs_free(struct rr_expr *expr);
+void rules_free(struct r_rule *rrule);
+void tokenize_rule(struct r_rule *rule);
+struct r_rule* rule_parse(const char *line, const char *file, int linen, uid_t uid);
 struct r_rule* parse_rules_file(const char *filename, unsigned int uid);
 /* eventnotice.c */
 
