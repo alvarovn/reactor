@@ -153,13 +153,14 @@ void free_users(struct r_user*);
 
 /* rules.c */
 #define LINE_SIZE 16384
-void tokens_free(struct rr_token *tokens);
+void tokens_free(struct rr_token *tokens, void (*free_func)(void *data));
 struct rr_token* get_token(struct rr_token *tokens, unsigned int tnum);
 struct rr_error* new_error(int pos, char *msg);
 void errors_free(struct rr_error *errors);
 struct rr_expr* expr_new(int exprnum, char *tokensep, char *end, bool trim);
 void exprs_free(struct rr_expr *expr);
-void rules_free(struct r_rule *rrule);
+void rules_free(struct r_rule *rrule, void (*free_func)(void *data));
+void r_rules_free(struct r_rule *rule);
 void tokenize_rule(struct r_rule *rule);
 struct r_rule* rule_parse(const char *line, const char *file, int linen, uid_t uid);
 struct r_rule* parse_rules_file(const char *filename, unsigned int uid);

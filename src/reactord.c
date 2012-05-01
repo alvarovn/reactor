@@ -61,7 +61,7 @@ static enum rmsg_type reactor_add_rule_handler(struct r_rule *rule){
                 warn("%s:%i:%i: %s", rule->file, rule->linen, rule->errors->pos, rule->errors->msg);
             }
             else{
-                warn("%i: %s", rule->errors->pos, rule->errors->msg);
+                warn("\"%s\":%i: %s", rule->line, rule->errors->pos, rule->errors->msg);
             }
             rule->errors = rule->errors->next;
         }
@@ -302,7 +302,7 @@ static void attend_cntrl_msg(int sfd, short ev, void *arg){
             /* TODO Change uid to the user who sent the rule */
             data = (void *) rule_parse(msg->msg, NULL, -1, 0);
             response.hd.mtype = reactor_add_rule_handler((struct r_rule *) data);
-            rules_free((struct r_rule *) data);
+            r_rules_free((struct r_rule *) data);
             send_cntrl_msg(psfd, &response);
             free(msg->msg);
             break;
@@ -407,7 +407,7 @@ static void init_rules(){
             rules = rules->next){
                 reactor_add_rule_handler(rules);
         }
-        rules_free(rules);
+        r_rules_free(rules);
     }
     
 }

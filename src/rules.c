@@ -38,11 +38,12 @@ struct rr_token* new_token(void *data, struct rr_token *next, struct rr_token *d
     return token;
 }
 
-void tokens_free(struct rr_token *tokens){
+void tokens_free(struct rr_token *tokens, void (*free_func)(void *data)){
     if(tokens == NULL) return;
-    tokens_free(tokens->next);
-    tokens_free(tokens->down);
-    free(tokens->data);
+    tokens_free(tokens->next, free_func);
+    tokens_free(tokens->down, free_func);
+    if(free_func != NULL)
+        free_func(tokens->data);
     free(tokens);
 }
 
@@ -96,15 +97,28 @@ void exprs_free(struct rr_expr *expr){
     free(expr);
 }
 
-void rules_free(struct r_rule *rrule){
+void rules_free(struct r_rule *rrule, void (*free_func)(void *data)){
     if(rrule == NULL) return;
-    rules_free(rrule->next);
+    rules_free(rrule->next, free_func);
     errors_free(rrule->errors);
-    tokens_free(rrule->tokens);
+    tokens_free(rrule->tokens, free_func);
     exprs_free(rrule->expr);
     free(rrule->line);
     free(rrule->file);
     free(rrule);
+}
+/* Don't free the action pointers */
+void r_rules_free(struct r_rule *rule){
+    struct rr_token *tokenp;
+    
+    if(rule == NULL) return;
+    tokenp = get_token(rule->tokens, RULE_EVENTS);
+    if(tokenp != NULL){
+        tokens_free(tokenp->next, NULL);
+        tokenp->next = NULL;
+    }
+    r_rules_free(rule->next);
+    rules_free(rule, free);
 }
 
 /* TODO Very dirty tokenizer. Refactor. */
@@ -176,7 +190,7 @@ static int tokenize(char *line, struct rr_expr *expr,
                     (*errorsp)->pos += linep - line;
                     errorsp = &(*errorsp)->next;
                 }
-                tokens_free(*tokens);
+                tokens_free(*tokens, free);
                 *tokens = NULL;
                 linep = line;
                 goto end;
@@ -242,7 +256,7 @@ error:
     *errorsp = new_error(linep-line-1, errmsg);
     errorsp = &(*errorsp)->next;
     linep = line;
-    tokens_free(*tokens);
+    tokens_free(*tokens, free);
     *tokens = NULL;
     return 0;
 }
@@ -299,13 +313,13 @@ struct r_rule* rule_parse(const char *line, const char *file, int linen, uid_t u
     
     if((to = get_token(rule->tokens, RULE_TO)) == NULL){
         rule->errors = new_error(from->pos + strlen(from->data), "Unexpected rule end");
-        tokens_free(rule->tokens);
+        tokens_free(rule->tokens, free);
         rule->tokens = NULL;
         goto end;
     }
     if((events = get_token(rule->tokens, RULE_EVENTS)) == NULL){
         rule->errors = new_error(to->pos + strlen(to->data), "Unexpected rule end");
-        tokens_free(rule->tokens);
+        tokens_free(rule->tokens, free);
         rule->tokens = NULL;
         goto end;
     }
@@ -314,7 +328,7 @@ struct r_rule* rule_parse(const char *line, const char *file, int linen, uid_t u
     if((actiontype == NULL) || (strcmp(actiontype->data, "NONE") == 0)){
         if(get_token(rule->tokens, RULE_ACTION) != NULL){
             rule->errors = new_error(actiontype->pos + strlen(actiontype->data), "The rule was expected to finish here");
-            tokens_free(rule->tokens);
+            tokens_free(rule->tokens, free);
             rule->tokens = NULL;
             goto end;
         }
@@ -327,7 +341,7 @@ struct r_rule* rule_parse(const char *line, const char *file, int linen, uid_t u
     else{
         if((action = get_token(rule->tokens, RULE_ACTION)) == NULL){
             rule->errors = new_error(actiontype->pos + strlen(actiontype->data), "Unexpected rule end");
-            tokens_free(rule->tokens);
+            tokens_free(rule->tokens, free);
             rule->tokens = NULL;
             goto end;
         }
@@ -347,18 +361,19 @@ struct r_rule* rule_parse(const char *line, const char *file, int linen, uid_t u
                     skip_blanks_simple(tokencharp, tokenchari);
                     if(((char *)action->down->data)[tokenchari] == '\0'){
                         rule->errors = new_error(action->pos + tokenchari, "Unexpected rule end");
-                        tokens_free(rule->tokens);
+                        tokens_free(ractiontkn, action_free);
+                        tokens_free(rule->tokens, free);
                         rule->tokens = NULL;
                         goto end;
                     }
                     tokenchari++;
                     skip_blanks_simple(tokencharp, tokenchari);
-                    // TODO If after the port number there are invalid characters return error (second parameter of strtol)
                     action_prop_set_port((struct r_action *)ractiontkn->data, 
                                          (unsigned short) strtol(&((char*)action->down->data)[tokenchari], &nnum, 10));
                     if(nnum != &((char*)action->down->data)[strlen(action->down->data)]){
                         rule->errors = new_error(action->pos + tokenchari, "The port is not a number");
-                        tokens_free(rule->tokens);
+                        tokens_free(ractiontkn, action_free);
+                        tokens_free(rule->tokens, free);
                         rule->tokens = NULL;
                         goto end;
                     }
@@ -369,19 +384,20 @@ struct r_rule* rule_parse(const char *line, const char *file, int linen, uid_t u
                     break;
                 default:
                     rule->errors = new_error(actiontype->pos, "Malformed address");
-                    tokens_free(rule->tokens);
+                    tokens_free(ractiontkn, action_free);
+                    tokens_free(rule->tokens, free);
                     rule->tokens = NULL;
                     goto end;
             }
         }
         else{
             rule->errors = new_error(action->pos + tokenchari, "Unexpected token");
-            tokens_free(rule->tokens);
+            tokens_free(rule->tokens, free);
             rule->tokens = NULL;
             goto end;
         }
     }
-    tokens_free(actiontype);
+    tokens_free(actiontype, free);
     events->next = ractiontkn;
 end:
     return rule;

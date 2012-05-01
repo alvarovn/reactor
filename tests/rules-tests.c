@@ -53,13 +53,14 @@ START_TEST(test_parser_prop_rule){
     fail_unless(strcmp((char *)totkn->data, "STATE_B") == 0);
     
     fail_unless((eventstkn = get_token(rule->tokens, RULE_EVENTS)) != NULL);
-    fail_unless((eventstkn = eventstkn->down) != NULL);
+    fail_unless(eventstkn->down != NULL);
     
-    fail_unless(get_token(eventstkn, 0) != NULL);
-    fail_unless(strcmp((char *)(get_token(eventstkn, 0))->data, "event1") == 0);
     
-    fail_unless((get_token(eventstkn, 0))->next == NULL);
-    fail_unless((get_token(eventstkn, 0))->down == NULL);
+    fail_unless(get_token(eventstkn->down, 0) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn->down, 0))->data, "event1") == 0);
+    
+    fail_unless((get_token(eventstkn->down, 0))->next == NULL);
+    fail_unless((get_token(eventstkn->down, 0))->down == NULL);
     
     fail_unless((actiontkn = get_token(rule->tokens, RULE_RACTION)) != NULL);
     fail_unless((action = (struct r_action *) actiontkn->data) != NULL);
@@ -76,7 +77,10 @@ START_TEST(test_parser_prop_rule){
         "\"655\" port expected instead of \"%s\"", paction->port
     );
     
-    rules_free(rule);
+    tokens_free(actiontkn, action_free);
+    actiontkn = NULL;
+    eventstkn->next = NULL;
+    r_rules_free(rule);
     
     line = "STATE_A STATE_B event1 PROP localhost";
     rule = rule_parse(line, NULL, -1, 0);
@@ -88,13 +92,13 @@ START_TEST(test_parser_prop_rule){
     fail_unless(strcmp((char *)totkn->data, "STATE_B") == 0);
     
     fail_unless((eventstkn = get_token(rule->tokens, RULE_EVENTS)) != NULL);
-    fail_unless((eventstkn = eventstkn->down) != NULL);
+    fail_unless(eventstkn->down != NULL);
     
-    fail_unless(get_token(eventstkn, 0) != NULL);
-    fail_unless(strcmp((char *)(get_token(eventstkn, 0))->data, "event1") == 0);
+    fail_unless(get_token(eventstkn->down, 0) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn->down, 0))->data, "event1") == 0);
     
-    fail_unless((get_token(eventstkn, 0))->next == NULL);
-    fail_unless((get_token(eventstkn, 0))->down == NULL);
+    fail_unless((get_token(eventstkn->down, 0))->next == NULL);
+    fail_unless((get_token(eventstkn->down, 0))->down == NULL);
     
     fail_unless((actiontkn = get_token(rule->tokens, RULE_RACTION)) != NULL);
     fail_unless((action = (struct r_action *) actiontkn->data) != NULL);
@@ -107,7 +111,10 @@ START_TEST(test_parser_prop_rule){
     fail_unless(strcmp(paction->addr, "localhost") == 0);
     fail_unless(paction->port == 6500);
     
-    rules_free(rule);
+    tokens_free(actiontkn, action_free);
+    actiontkn = NULL;
+    eventstkn->next = NULL;
+    r_rules_free(rule);
     
     line = "STATE_A STATE_B event1 PROP";
     rule = rule_parse(line, NULL, -1, 0);
@@ -116,16 +123,23 @@ START_TEST(test_parser_prop_rule){
     fail_unless(rule->errors != NULL);
     fail_unless(rule->tokens == NULL);
     
-    rules_free(rule);
-    
+    tokens_free(actiontkn, action_free);
+    actiontkn = NULL;
+    eventstkn->next = NULL;
+    r_rules_free(rule);
     line = "STATE_A STATE_B event1 PROP localhost:34pp";
+    mark_point ();
     rule = rule_parse(line, NULL, -1, 0);
     
     fail_unless(rule != NULL);
     fail_unless(rule->errors != NULL);
     fail_unless(rule->tokens == NULL);
     
-    rules_free(rule);
+    tokens_free(actiontkn, action_free);
+    actiontkn = NULL;
+    actiontkn = NULL;
+    eventstkn->next = NULL;
+    r_rules_free(rule);
 }
 END_TEST
 
@@ -151,13 +165,13 @@ START_TEST(test_parser_none_rule){
     fail_unless(strcmp((char *)totkn->data, "STATE_B") == 0);
     
     fail_unless((eventstkn = get_token(rule->tokens, RULE_EVENTS)) != NULL);
-    fail_unless((eventstkn = eventstkn->down) != NULL);
+    fail_unless(eventstkn->down != NULL);
     
-    fail_unless(get_token(eventstkn, 0) != NULL);
-    fail_unless(strcmp((char *)(get_token(eventstkn, 0))->data, "event1") == 0);
+    fail_unless(get_token(eventstkn->down, 0) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn->down, 0))->data, "event1") == 0);
     
-    fail_unless((get_token(eventstkn, 0))->next == NULL);
-    fail_unless((get_token(eventstkn, 0))->down == NULL);
+    fail_unless((get_token(eventstkn->down, 0))->next == NULL);
+    fail_unless((get_token(eventstkn->down, 0))->down == NULL);
     
     fail_unless((actiontkn = get_token(rule->tokens, RULE_RACTION)) != NULL);
     fail_unless((action = (struct r_action *) actiontkn->data) != NULL);
@@ -167,7 +181,10 @@ START_TEST(test_parser_none_rule){
     
     fail_unless(action->atype == NONE);
     
-    rules_free(rule);
+    tokens_free(actiontkn, action_free);
+    actiontkn = NULL;
+    eventstkn->next = NULL;
+    r_rules_free(rule);
     line = "STATE_A STATE_B event1 NONE";
     rule = rule_parse(line, NULL, -1, 0);
     
@@ -182,13 +199,13 @@ START_TEST(test_parser_none_rule){
     fail_unless(strcmp((char *)totkn->data, "STATE_B") == 0);
     
     fail_unless((eventstkn = get_token(rule->tokens, RULE_EVENTS)) != NULL);
-    fail_unless((eventstkn = eventstkn->down) != NULL);
+    fail_unless(eventstkn->down != NULL);
     
-    fail_unless(get_token(eventstkn, 0) != NULL);
-    fail_unless(strcmp((char *)(get_token(eventstkn, 0))->data, "event1") == 0);
+    fail_unless(get_token(eventstkn->down, 0) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn->down, 0))->data, "event1") == 0);
     
-    fail_unless((get_token(eventstkn, 0))->next == NULL);
-    fail_unless((get_token(eventstkn, 0))->down == NULL);
+    fail_unless((get_token(eventstkn->down, 0))->next == NULL);
+    fail_unless((get_token(eventstkn->down, 0))->down == NULL);
     
     fail_unless((actiontkn = get_token(rule->tokens, RULE_RACTION)) != NULL);
     fail_unless((action = (struct r_action *) actiontkn->data) != NULL);
@@ -198,7 +215,10 @@ START_TEST(test_parser_none_rule){
     
     fail_unless(action->atype == NONE);
     
-    rules_free(rule);
+    tokens_free(actiontkn, action_free);
+    actiontkn = NULL;
+    eventstkn->next = NULL;
+    r_rules_free(rule);
     
     line = "STATE_A STATE_B event1 NONE this shouldn't be here";
     rule = rule_parse(line, NULL, -1, 0);
@@ -208,7 +228,7 @@ START_TEST(test_parser_none_rule){
     fail_unless(rule->errors != NULL);
     fail_unless(rule->tokens == NULL);
     
-    rules_free(rule);
+    r_rules_free(rule);
 }
 END_TEST
 
@@ -234,19 +254,19 @@ START_TEST(test_parser_cmd_rule){
     fail_unless(strcmp((char *)totkn->data, "STATE_B") == 0);
     
     fail_unless((eventstkn = get_token(rule->tokens, RULE_EVENTS)) != NULL);
-    fail_unless((eventstkn = eventstkn->down) != NULL);
+    fail_unless(eventstkn->down != NULL);
     
-    fail_unless(get_token(eventstkn, 0) != NULL);
-    fail_unless(strcmp((char *)(get_token(eventstkn, 0))->data, "event1") == 0);
+    fail_unless(get_token(eventstkn->down, 0) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn->down, 0))->data, "event1") == 0);
     
-    fail_unless(get_token(eventstkn, 1) != NULL);
-    fail_unless(strcmp((char *)(get_token(eventstkn, 1))->data, "event2") == 0);
+    fail_unless(get_token(eventstkn->down, 1) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn->down, 1))->data, "event2") == 0);
     
-    fail_unless(get_token(eventstkn, 2) != NULL);
-    fail_unless(strcmp((char *)(get_token(eventstkn, 2))->data, "event3") == 0);
+    fail_unless(get_token(eventstkn->down, 2) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn->down, 2))->data, "event3") == 0);
     
-    fail_unless(get_token(eventstkn, 3) != NULL);
-    fail_unless(strcmp((char *)(get_token(eventstkn, 3))->data, "event4") == 0);
+    fail_unless(get_token(eventstkn->down, 3) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn->down, 3))->data, "event4") == 0);
     
     fail_unless((actiontkn = get_token(rule->tokens, RULE_RACTION)) != NULL);
     fail_unless((action = (struct r_action *) actiontkn->data) != NULL);
@@ -258,7 +278,10 @@ START_TEST(test_parser_cmd_rule){
     cmdaction = (struct cmd_action *)action->action;
     fail_unless(strcmp(cmdaction->cmd, "echo \"test\" >> /tmp/test") == 0);
     
-    rules_free(rule);
+    tokens_free(actiontkn, action_free);
+    actiontkn = NULL;
+    eventstkn->next = NULL;
+    r_rules_free(rule);
     
     line = "STATE_A STATE_B event1& event2 &event3& event4 CMD";
     rule = rule_parse(line, NULL, -1, 0);
@@ -312,7 +335,7 @@ START_TEST(test_tokenizer_subexp_end){
     fail_unless(rule.tokens->next->down->next->next == NULL);
     fail_unless(rule.tokens->next->down->next->down == NULL);
     
-    tokens_free(rule.tokens);
+    tokens_free(rule.tokens, free);
     
     rule.line = "A B";
     
@@ -333,7 +356,7 @@ START_TEST(test_tokenizer_subexp_end){
     fail_unless(rule.tokens->next->down->next == NULL);
     fail_unless(rule.tokens->next->down->down == NULL);
     
-    tokens_free(rule.tokens);
+    tokens_free(rule.tokens, free);
 }
 END_TEST
 
@@ -429,7 +452,7 @@ START_TEST(test_tokenizer_tokens_lack){
     fail_unless(rule.tokens->next->down == NULL);
     fail_unless(rule.tokens->next->next == NULL);
     
-    tokens_free(rule.errors);
+    tokens_free(rule.tokens, free);
         
     rule.line = "A | B | C";
        
@@ -454,7 +477,7 @@ START_TEST(test_tokenizer_tokens_lack){
     fail_unless(rule.tokens->next->next->down->next == NULL);
     fail_unless(rule.tokens->next->next->down->down == NULL);
     
-    tokens_free(rule.errors);
+    tokens_free(rule.tokens, free);
 }
 END_TEST
 
@@ -515,7 +538,7 @@ START_TEST(test_tokenizer_comments){
     fail_unless(rule.tokens->next->next == NULL);
     fail_unless(rule.tokens->next->down == NULL);
     
-    tokens_free(rule.tokens);
+    tokens_free(rule.tokens, free);
     
     rule.line = "# This is comment line";
     
@@ -523,7 +546,7 @@ START_TEST(test_tokenizer_comments){
     
     fail_unless(rule.tokens == NULL);
     fail_unless(rule.errors == NULL);
-    tokens_free(rule.tokens);
+    tokens_free(rule.tokens, free);
 }
 END_TEST
 
@@ -585,7 +608,7 @@ START_TEST(test_tokenizer_notrim){
     fail_unless(strcmp(rule.tokens->next->next->next->next->data, " D") == 0);
     fail_unless(rule.tokens->next->next->next->next->next == NULL);
     fail_unless(rule.tokens->next->next->next->next->down == NULL);
-    tokens_free(rule.tokens);
+    tokens_free(rule.tokens, free);
 
 }
 END_TEST
@@ -733,7 +756,7 @@ START_TEST(test_tokenizer_reactor_rule_short){
     );
     fail_unless(rrule.tokens->next->next->next->next->down->down == NULL);
     fail_unless(rrule.tokens->next->next->next->next->down->next == NULL);
-    tokens_free(rrule.tokens);
+    tokens_free(rrule.tokens, free);
 }
 END_TEST
 
@@ -836,7 +859,7 @@ START_TEST(test_tokenizer_reactor_rule_long){
     );
     fail_unless(rrule.tokens->next->next->next->next->down->down == NULL);
     fail_unless(rrule.tokens->next->next->next->next->down->next == NULL);
-    tokens_free(rrule.tokens);
+    tokens_free(rrule.tokens, free);
 }
 END_TEST
 
