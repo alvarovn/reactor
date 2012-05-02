@@ -28,7 +28,7 @@
 #include "libreactor.h"
 #include "libreactor-private.h"
 
-int listen_cntrl(){
+R_EXPORT int listen_cntrl(){
     struct sockaddr_un saddr;
     int sfd;
     /* TODO Backlog is 5 as a random number, change it to make sense */
@@ -63,7 +63,7 @@ end:
     return sfd;
 }
 
-int connect_cntrl(){
+R_EXPORT int connect_cntrl(){
     struct sockaddr_un saddr;
     int psfd;
     
@@ -103,7 +103,7 @@ static int socket_write(int psfd, void *data, int size){
 end:
     return error;
 }
-int send_cntrl_msg(int psfd, const struct r_msg *msg){
+R_EXPORT int send_cntrl_msg(int psfd, const struct r_msg *msg){
     int error = 0;
     struct r_msg *response = NULL;
     struct rmsg_hd hd;
@@ -144,7 +144,7 @@ end:
     return error;
 }
 
-struct r_msg* receive_cntrl_msg(int psfd){
+R_EXPORT struct r_msg* receive_cntrl_msg(int psfd){
     int *sfd;
     int count = 0;
     struct r_msg * rmsg = NULL;
@@ -190,7 +190,7 @@ malloc_error:
     return NULL;
 }
 
-void close_cntrl(int sfd){
+R_EXPORT void close_cntrl(int sfd){
     close(sfd);
     unlink(SOCK_PATH);
 }

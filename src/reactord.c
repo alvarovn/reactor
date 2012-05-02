@@ -151,6 +151,7 @@ static int reactor_event_handler(const char *msg){
             trans = (Transition *) currtrans->data;
             if(trans_notice_event(trans)){
                 /* forward on the state machine */
+                info("Forwarding to state '%s'", state_get_id(trans_get_dest(trans)));
                 transinit = state_get_trans(trans_get_dest(trans));
                 if(transinit != NULL){
                 transindex = transinit;

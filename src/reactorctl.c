@@ -39,14 +39,19 @@ int main(int argc, char *argv[]) {
     const char *optstring = "e:r:t:";
     struct r_msg msg;
     
-    ;
-    if((psfd = connect_cntrl()) == -1){
-        warn("Seems that reactord is not running. Start reactord");
+    if((opt = getopt_long( argc, argv, optstring, options, &optindex )) == -1){
+        // Here must print help
+        fprintf(stderr, "Write an argument\n");
         return 1;
     }
-    for(opt = getopt_long( argc, argv, optstring, options, &optindex );
+    if((psfd = connect_cntrl()) == -1){
+        fprintf(stderr, "Seems that reactord is not running. Start reactord\n");
+        return 1;
+    }
+    for(;
         opt != -1;
-        opt = getopt_long( argc, argv, optstring, options, &optindex )){
+        opt = getopt_long( argc, argv, optstring, options, &optindex )
+    ){
             switch(opt){
                 case 'e':
                     msg.hd.mtype = EVENT;
@@ -58,7 +63,6 @@ int main(int argc, char *argv[]) {
                     msg.hd.mtype = RM_TRANS;
                     break;
                 default:
-                    /* TODO Inform of the unexistance of the argument */
                     continue;
             }
             msg.msg = strdup(optarg);
@@ -67,18 +71,18 @@ int main(int argc, char *argv[]) {
             mtype = send_cntrl_msg(psfd, &msg);
             switch(mtype){
                 case RULE_MULTINIT:
-                    warn("Trying to set multiple initial transitions to the same state machine. The transition won't be added.");
+                    fprintf(stderr, "Trying to set multiple initial transitions to the same state machine, the transition won't be added\n");
                     break;
                 case ARG_MALFORMED:
-                    warn("Transition malformed.");
+                    fprintf(stderr, "Transition malformed\n");
                     break;
                 case NO_TRANS:
-                    warn("Transition '%s' doesn't exist", msg.msg);
+                    fprintf(stderr, "Transition '%s' doesn't exist\n", msg.msg);
                 case ACK:
-                    dbg("Message sent", NULL);
+//                     dbg("Message sent", NULL);
                     break;
                 default:
-                    warn("reactord is not working properly.");
+                    fprintf(stderr, "reactord is not working properly\n");
                     break;
             }
             close(psfd);

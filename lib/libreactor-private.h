@@ -29,7 +29,7 @@
 
 #include "libreactor.h"
 
-/* TODO Socket must be changed to a secure path */
+#define R_EXPORT __attribute__ ((visibility("default")))
 
 #ifdef DEBUG
 // A place where the permissions are not a problem for users

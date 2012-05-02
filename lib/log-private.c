@@ -73,7 +73,7 @@ static void rlog_e(int priority, const char *format, va_list args){
     syslog(priority, "%s: %s", msg, strerror(saved_errno));
 }
 
-void info(const char *format, ...){
+R_EXPORT void info(const char *format, ...){
     va_list args;
 
     va_start(args, format);
@@ -81,7 +81,7 @@ void info(const char *format, ...){
     va_end(args);
 }
 
-void warn(const char *format, ...){
+R_EXPORT void warn(const char *format, ...){
     va_list args;
 
     va_start(args, format);
@@ -89,7 +89,7 @@ void warn(const char *format, ...){
     va_end(args);
 }
 
-void err(const char *format, ...){
+R_EXPORT void err(const char *format, ...){
     va_list args;
 
     va_start(args, format);
@@ -97,7 +97,7 @@ void err(const char *format, ...){
     va_end(args);
 }
 
-void die(const char *format, ...){
+R_EXPORT void die(const char *format, ...){
     va_list args;
 
     va_start(args, format);
@@ -110,7 +110,7 @@ void die(const char *format, ...){
 
 #ifdef DEBUG
 
-void l_debug(const char *format, ...){
+R_EXPORT void l_debug(const char *format, ...){
     va_list args;
 
     va_start(args, format);
@@ -118,7 +118,7 @@ void l_debug(const char *format, ...){
     va_end(args);
 }
 
-void l_debug_e(const char *format, ...){
+R_EXPORT void l_debug_e(const char *format, ...){
     va_list args;
 
     va_start(args, format);

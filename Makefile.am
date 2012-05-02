@@ -1,6 +1,7 @@
 AM_CFLAGS =	$(GLIB_CFLAGS) \
 		$(LIBEVENT_CFLAGS) \
 		-I$(top_srcdir)/lib/ \
+		-fvisibility=hidden \
 		-pthread
 
 AM_LDFLAGS =	$(GLIB_LIBS) \

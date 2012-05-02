@@ -281,6 +281,7 @@ struct r_rule* rule_parse(const char *line, const char *file, int linen, uid_t u
                     *eventsp,
                     *ractiontkn;
     struct r_action *raction;
+    RSList *eventsrsl;
     int eventsl,
         tokenchari;
     char *tokencharp,
@@ -389,6 +390,15 @@ struct r_rule* rule_parse(const char *line, const char *file, int linen, uid_t u
                     rule->tokens = NULL;
                     goto end;
             }
+            eventsp = events->down;
+            eventsrsl = NULL;
+            eventsrsl = reactor_slist_prepend(eventsrsl, (void *) strdup(eventsp->data));
+            eventsp = eventsp->next;
+            while(eventsp != NULL){
+                eventsrsl = reactor_slist_prepend(eventsrsl, (void *) strdup(eventsp->data));
+                eventsp = eventsp->next;
+            }
+            action_prop_set_enids((struct r_action *)ractiontkn->data, eventsrsl);
         }
         else{
             rule->errors = new_error(action->pos + tokenchari, "Unexpected token");

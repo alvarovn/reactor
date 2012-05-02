@@ -107,7 +107,9 @@ static void cmd_execute(struct cmd_action *cmd){
 static void prop_execute_thread(void *arg){
     int psfd;
     struct prop_action *prop = (struct prop_action*) arg;
-    
+    if(prop->enids == NULL){
+        dbg("No events to propagate", NULL);
+    }
     if((psfd = connect_remote(prop->addr, prop->port)) == -1){
         warn("Unable to reach '%s:%u' remote reactord", prop->addr, prop->port);
         return;
@@ -119,6 +121,10 @@ static void prop_execute_thread(void *arg){
 void action_do(struct r_action *raction){
     pthread_t t1;
     int s;
+    if(raction == NULL){
+        dbg("No action to run", NULL);
+        return;
+    }
     switch(raction->atype){
         case CMD:
             cmd_execute((struct cmd_action *) raction->action);
