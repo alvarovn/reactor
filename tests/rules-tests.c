@@ -76,13 +76,14 @@ START_TEST(test_parser_prop_rule){
     fail_unless(paction->port == 655,
         "\"655\" port expected instead of \"%s\"", paction->port
     );
+    fail_unless(strcmp(paction->enids->data, "event1") == 0);
     
     tokens_free(actiontkn, action_free);
     actiontkn = NULL;
     eventstkn->next = NULL;
     r_rules_free(rule);
     
-    line = "STATE_A STATE_B event1 PROP localhost";
+    line = "STATE_A STATE_B event1&event2 PROP localhost";
     rule = rule_parse(line, NULL, -1, 0);
     
     fail_unless((fromtkn = get_token(rule->tokens, RULE_FROM)) != NULL);
@@ -97,8 +98,11 @@ START_TEST(test_parser_prop_rule){
     fail_unless(get_token(eventstkn->down, 0) != NULL);
     fail_unless(strcmp((char *)(get_token(eventstkn->down, 0))->data, "event1") == 0);
     
-    fail_unless((get_token(eventstkn->down, 0))->next == NULL);
-    fail_unless((get_token(eventstkn->down, 0))->down == NULL);
+    fail_unless(get_token(eventstkn->down->next, 0) != NULL);
+    fail_unless(strcmp((char *)(get_token(eventstkn->down->next, 0))->data, "event2") == 0);
+    
+    fail_unless((get_token(eventstkn->down, 0))->next->next == NULL);
+    fail_unless((get_token(eventstkn->down, 0))->next->down == NULL);
     
     fail_unless((actiontkn = get_token(rule->tokens, RULE_RACTION)) != NULL);
     fail_unless((action = (struct r_action *) actiontkn->data) != NULL);
@@ -110,6 +114,11 @@ START_TEST(test_parser_prop_rule){
     paction = (struct prop_action *)action->action;
     fail_unless(strcmp(paction->addr, "localhost") == 0);
     fail_unless(paction->port == 6500);
+    fail_unless(strcmp(paction->enids->data, "event2") == 0,
+        "'event2 expected instead of '%s'", paction->enids->next->data);
+    fail_unless(strcmp(paction->enids->next->data, "event1") == 0,
+        "'event2 expected instead of '%s'", paction->enids->next->data
+    );
     
     tokens_free(actiontkn, action_free);
     actiontkn = NULL;

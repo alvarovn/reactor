@@ -220,4 +220,11 @@ int listen_remote();
 int connect_remote(char *host, int port);
 RSList* receive_remote_events(int psfd);
 int send_remote_events(int psfd, const RSList *eids);
+
+/* inputhandlers.c */
+
+enum rmsg_type reactor_add_rule_handler(struct reactor_d *reactor, struct r_rule *rule);
+int reactor_event_handler(struct reactor_d *reactor, const char *msg);
+enum rmsg_type reactor_rm_trans_handler(struct reactor_d *reactor, char *msg);
+
 #endif
