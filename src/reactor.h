@@ -77,8 +77,9 @@
             }
             
 struct reactor_d{
-    GHashTable *eventnotices;
-    GHashTable *states;
+    RHashTable *eventnotices;
+    RHashTable *states;
+    RHashTable *workers;
 };
 enum a_types{
     NONE,
@@ -214,17 +215,33 @@ void action_cmd_set_cmd(struct r_action *raction, char *cmd);
 void action_prop_set_port(struct r_action *raction, unsigned short port);
 void action_prop_set_addr(struct r_action *raction, char *addr);
 void action_prop_set_enids(struct r_action *raction, RSList *enids);
-/* remote.c */
 
+/* remote.c */
 int listen_remote();
 int connect_remote(char *host, int port);
 RSList* receive_remote_events(int psfd);
 int send_remote_events(int psfd, const RSList *eids);
 
 /* inputhandlers.c */
-
 enum rmsg_type reactor_add_rule_handler(struct reactor_d *reactor, struct r_rule *rule);
 int reactor_event_handler(struct reactor_d *reactor, const char *msg);
 enum rmsg_type reactor_rm_trans_handler(struct reactor_d *reactor, char *msg);
+
+/* workers.c */
+typedef void (*WkrMainThreadFunc)(void);
+
+struct r_worker{
+    void *modhandlr;
+    char *wkrname;
+    WkrMainThreadFunc wkr_main_thread;
+    pthread_t *wkrpt;
+};
+
+void init_workers(struct reactor_d *reactor);
+void free_worker(struct r_worker *worker);
+// Symbols
+#define WORKER_NAME "wkrname"
+#define WORKER_MAIN_THREAD "wkr_main_thread"
+
 
 #endif

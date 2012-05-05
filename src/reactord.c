@@ -276,13 +276,10 @@ int main(int argc, char *argv[]) {
         err("Unable to change current directory to '/'.");
         goto exit;
     }
-
-    // TODO open an event-listener socket
-    // TODO enqueue events
-    // TODO open a control socket
     
     reactor.eventnotices = reactor_hash_table_new((RHashFunc) reactor_str_hash, (REqualFunc) str_eq);
     reactor.states = reactor_hash_table_new((RHashFunc) reactor_str_hash, (REqualFunc) str_eq);
+    reactor.workers = reactor_hash_table_new((RHashFunc) reactor_str_hash, (REqualFunc) str_eq);
     init_rules();
     /* sockets setup and poll */
     event_init();
@@ -298,6 +295,9 @@ int main(int argc, char *argv[]) {
     event_add(&cntrlev, NULL);
     event_set(&remoteev, remotesfd, EV_READ | EV_PERSIST, &attend_remote_events, NULL);
     event_add(&remoteev, NULL);
+    
+    init_workers(&reactor);
+    
     event_dispatch();
 
     

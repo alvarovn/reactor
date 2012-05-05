@@ -41,21 +41,21 @@ AC_CHECK_HEADERS(event.h, , AC_MSG_ERROR(Libevent header (event.h) not found. re
 # options and defaults
 #
 
-#AC_ARG_ENABLE(debug,
-#[  --enable-debug           specify you are building with debugging on],
-#    AC_DEFINE(DEBUG, 1, [Define if you want compile for debugging.]))
 AC_ARG_ENABLE(debug,
 [  --enable-debug     enable debugging and disable optimization],
 [  if test "$enable_debug" = "yes"; then
-        DEBUG_CFLAGS="-g3 -DDEBUG"
-        AC_DEFINE(DEBUG, 1, [Define if you want compile for debugging.])
+        DEBUG_CFLAGS="-g3"
+        AC_DEFINE(DEBUG, 1, [Define to 1 if you want compile for debugging.])
     else
-        DEBUG_CFLAGS="-O2 -DNDEBUG"
+        DEBUG_CFLAGS="-O2"
     fi
 ]
 )
-AM_CONDITIONAL(ENABLE_DEBUG, test "$enable_debug" = "yes")
+#AM_CONDITIONAL(ENABLE_DEBUG, test "$enable_debug" = "yes")
 CFLAGS="$DEBUG_CFLAGS"
+
+AS_AC_EXPAND(LIBDIR, $libdir)
+AC_DEFINE_UNQUOTED(WORKERSDIR, "$LIBDIR/$PACKAGE", Define where the workers are located.)
 
 ############################################
 # libevent checks copied from Tor project. #

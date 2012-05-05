@@ -1,4 +1,5 @@
-AM_CFLAGS =	$(GLIB_CFLAGS) \
+AM_CFLAGS =	-include $(top_builddir)/config.h \
+		$(GLIB_CFLAGS) \
 		$(LIBEVENT_CFLAGS) \
 		-I$(top_srcdir)/lib/ \
 		-fvisibility=hidden \
@@ -6,7 +7,11 @@ AM_CFLAGS =	$(GLIB_CFLAGS) \
 
 AM_LDFLAGS =	$(GLIB_LIBS) \
 		$(LIBEVENT_LIBS) \
-		-pthread
+		-pthread \
+		-ldl
+
+ACLOCAL_AMFLAGS = -I m4
+
 ##############
 # libreactor #
 ##############
@@ -22,7 +27,7 @@ lib_libreactor_la_SOURCES =	lib/libreactor-private.h \
 				lib/cntrl.c \
 				lib/util-private.c
  
-lib_libreactor_la_LDFLAGS =	$(AM_LDFLAGS)
+lib_libreactor_la_LDFLAGS =	$(AM_LDFLAGS) \
 				-version-info $(LIBREACTOR_CURRENT):$(LIBREACTOR_REVISION):$(LIBREACTOR_AGE)
 
 pkgconfigdir = $(libdir)/pkgconfig
@@ -42,7 +47,8 @@ src_reactord_modules = 	src/reactor.h \
 			src/transition.c \
 			src/action.c \
 			src/remote.c \
-			src/inputhandlers.c
+			src/inputhandlers.c \
+			src/workers.c
 
 src_reactord_SOURCES =	src/reactord.c \
 			$(src_reactord_modules)
@@ -50,7 +56,7 @@ src_reactord_SOURCES =	src/reactord.c \
 src_reactord_LDADD =	lib/libreactor.la
 
 src_reactorctl_SOURCES =	src/reactor.h \
-				src/reactorctl.c
+			src/reactorctl.c
 
 src_reactorctl_LDADD =	lib/libreactor.la
 
