@@ -8,19 +8,21 @@ AM_CFLAGS =	-include $(top_builddir)/config.h \
 AM_LDFLAGS =	$(GLIB_LIBS) \
 		$(LIBEVENT_LIBS) \
 		-pthread \
-		-ldl
+		-ldl \
+		-export-dynamic
 
 ACLOCAL_AMFLAGS = -I m4
 
-##############
-# libreactor #
-##############
+###############################
+# libreactor & reactorworkers #
+###############################
 LIBREACTOR_CURRENT = 0
 LIBREACTOR_REVISION = 0
 LIBREACTOR_AGE = 0
 
-include_HEADERS = lib/libreactor.h
-lib_LTLIBRARIES = lib/libreactor.la
+include_HEADERS =	lib/libreactor.h \
+			lib/reactorworkers.h
+lib_LTLIBRARIES = 	lib/libreactor.la
 
 lib_libreactor_la_SOURCES =	lib/libreactor-private.h \
 				lib/log-private.c \
@@ -59,6 +61,20 @@ src_reactorctl_SOURCES =	src/reactor.h \
 			src/reactorctl.c
 
 src_reactorctl_LDADD =	lib/libreactor.la
+
+###########
+# workers #
+###########
+
+pkglib_LTLIBRARIES = 		workers/files.la
+
+workers_files_la_SOURCES = 	workers/files.c
+workers_files_la_LDFLAGS =	-avoid-version \
+				-module \
+				-shared \
+				-export-dynamic \
+				-export-symbols $(top_srcdir)/workers.syms
+			
 
 #########
 # tests #

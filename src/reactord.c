@@ -30,7 +30,7 @@
 
 #include "reactor.h"
 
-struct reactor_d reactor;
+static struct reactor_d reactor;
 
 // TODO signal handlers
 
@@ -77,6 +77,10 @@ struct reactor_d reactor;
 //     
 //     free(msg);
 // }
+
+struct reactor_d* get_reactor(){
+    return &reactor;
+}
 
 static void attend_cntrl_msg(int sfd, short ev, void *arg){
 //     int s,
@@ -228,6 +232,7 @@ int main(int argc, char *argv[]) {
     int error, cntrlsfd, remotesfd;
     struct event cntrlev, remoteev;
     pid_t pid, sid;
+    RHashTable *workers;
     
     error = 0;
     info("Starting the reactor...");
@@ -279,7 +284,7 @@ int main(int argc, char *argv[]) {
     
     reactor.eventnotices = reactor_hash_table_new((RHashFunc) reactor_str_hash, (REqualFunc) str_eq);
     reactor.states = reactor_hash_table_new((RHashFunc) reactor_str_hash, (REqualFunc) str_eq);
-    reactor.workers = reactor_hash_table_new((RHashFunc) reactor_str_hash, (REqualFunc) str_eq);
+    workers = reactor_hash_table_new((RHashFunc) reactor_str_hash, (REqualFunc) str_eq);
     init_rules();
     /* sockets setup and poll */
     event_init();
@@ -291,12 +296,12 @@ int main(int argc, char *argv[]) {
         err("Unable to create the remote socket.");
         goto exit;
     }
+    load_all_modules(WORKERSDIR, workers);
+    
     event_set(&cntrlev, cntrlsfd, EV_READ | EV_PERSIST, &attend_cntrl_msg, NULL);
     event_add(&cntrlev, NULL);
     event_set(&remoteev, remotesfd, EV_READ | EV_PERSIST, &attend_remote_events, NULL);
     event_add(&remoteev, NULL);
-    
-    init_workers(&reactor);
     
     event_dispatch();
 

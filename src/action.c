@@ -104,7 +104,7 @@ static void cmd_execute(struct cmd_action *cmd){
     }
 }
 
-static void prop_execute_thread(void *arg){
+static void *prop_execute_thread(void *arg){
     int psfd;
     struct prop_action *prop = (struct prop_action*) arg;
     if(prop->enids == NULL){

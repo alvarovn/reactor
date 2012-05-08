@@ -1,5 +1,5 @@
 /*
-    This file is part of reactor->
+    This file is part of reactor.
 
     Copyright (C) 2011  Álvaro Villalba Navarro <vn.alvaro@gmail.com>
 
@@ -109,7 +109,7 @@ end:
     return cmt;
 }
 
-int reactor_event_handler(struct reactor_d *reactor, const char *msg){
+R_EXPORT int reactor_event_handler(struct reactor_d *reactor, const char *msg){
     int error;
     EventNotice *en;
     RSList  *currtrans = NULL,

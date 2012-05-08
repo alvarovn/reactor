@@ -23,6 +23,7 @@
 
 #include "libreactor.h"
 #include "libreactor-private.h"
+#include "reactorworkers.h"
 
 #include <sys/types.h>
 
@@ -79,7 +80,6 @@
 struct reactor_d{
     RHashTable *eventnotices;
     RHashTable *states;
-    RHashTable *workers;
 };
 enum a_types{
     NONE,
@@ -228,20 +228,21 @@ int reactor_event_handler(struct reactor_d *reactor, const char *msg);
 enum rmsg_type reactor_rm_trans_handler(struct reactor_d *reactor, char *msg);
 
 /* workers.c */
-typedef void (*WkrMainThreadFunc)(void);
-
 struct r_worker{
-    void *modhandlr;
-    char *wkrname;
-    WkrMainThreadFunc wkr_main_thread;
-    pthread_t *wkrpt;
+    void *modhandler;
+    char *name;
+    RWMainFunc mainfunc;
+    RWInitFunc initfunc;
+    pthread_t pt;
+    struct r_worker *next;
 };
 
-void init_workers(struct reactor_d *reactor);
+int load_all_modules(const char *workerdir, RSList *workers);
+int load_module(const char *modpath, RSList *workers);
 void free_worker(struct r_worker *worker);
-// Symbols
-#define WORKER_NAME "wkrname"
-#define WORKER_MAIN_THREAD "wkr_main_thread"
+
+/* reactord.c */
+struct reactor_d* get_reactor();
 
 
 #endif
