@@ -1,0 +1,202 @@
+\chapter{Planning and economic study}
+In this section we will check the resources estimations and the final result of this project, being those resources time and money.
+\section{Tasks and temporal distribution}
+\label{sec:tasks}
+That is the planning followed in order to finish the project in time. Here is also where the goals of the final project are clearly 
+stated. It's mainly a list of tasks to perform ordered from most to less priority, and assigned deadlines to sets of those tasks:\\
+\begin{list}{-}{December 10th, 2011 ({\bf 60 days})}
+  \item \emph{First specification iteration of the project}\\
+    Define the main project's concept in which the rest of the project will be based, as a draft.
+  \item \emph{Define use cases}\\
+    Use cases to support the concept.
+  \item \emph{Collect general information}\\
+    Check the viability of the concept.
+\end{list}
+\begin{list}{-}{January 26th, 2012 ({\bf 16 days})}
+  \item \emph{First design iteration of the project}\\
+    After checking the viability of the project it's time to look for the better solution. This includes an implementation point of view
+    for the selection of technologies.
+\end{list}
+\begin{list}{-}{February 2nd, 2012 ({\bf 7 days})}
+  \item \emph{Makefile.am and configure.ac}\\
+    Learn the basics of \emph{Automake} and \emph{Autoconf}.
+  \item \emph{Log functions}
+  \item \emph{'events' group users check}
+\end{list}
+\begin{list}{-}{February 16th, 2012 ({\bf 14 days})}
+  \item \emph{Main data structure of the daemon done and working}
+  \item \emph{Wrappers to all the third party data structures (mainly glib)}\\
+    As it's expected to improve the efficiency of the software in the 
+    future, we want to wrap all the declarations of the third 
+    party basic data structures we use, so when we re-implement them
+    the changes to any other non-related code will be minimal.
+  \item \emph{Daemon socket ready to receive events from other processes}\\
+    The poll management performed by \emph{libevent}.
+  \item \emph{Execute shell commands functionality}
+  \item \emph{Dummy first version of control program}\\
+    Its purpose is only to send events, so we can test the daemon.
+\end{list}
+% TODO Move this.
+After this deadline what we have are the very most basic and principal 
+functionalities of the project. This is, a daemon with some states machines 
+defined in it that receives event messages for those states machines from a 
+socket and executes shell commands if assigned to the transitions.
+There's no way to read the states machines from anywhere yet so it has some test 
+hard-coded state machines.\\
+\\
+\begin{list}{-}{February 29th, 2012 ({\bf 13 days})}
+  \item \emph{Rule files} % TODO State tabs? State machines definition files?
+    \subitem Define syntax.
+    \subitem Parser function.
+    \subitem Define files location by user.
+\end{list}
+% Now we have implemented one of the lacking features of the basic version with 
+% more priority.
+\begin{list}{-}{March 9th, 2012 ({\bf 9 days})}
+  \item \emph{Control program with basic functionalities}
+    \subitem Add transition.
+    \subitem Manual event trigger.
+%     \subitem Return all the states machines in a known graph syntax.
+%       \subsubitem i.e. DOT.
+%   \item Delivery this report.
+\end{list}
+With this step done, we have the first basic but functional version of the 
+project.\\
+% TODO This must be extended before the delivery of this report.
+\begin{list}{-}{March 16th, 2012 ({\bf 7 days})}
+  \item \emph{Shared library}\\
+    This is expected to be easy and fast to finish, because it has been already implemented for the control program.
+\end{list}
+% TODO Do we have something to say here?
+\begin{list}{-}{March 30th, 2012 ({\bf 14 days})}
+  \item \emph{Propagate action}\\
+    This was initially thought not to be an action, but to be an event filter with configuration files similar to the rule files.
+\end{list}
+% TODO Do we have something to say here?
+\begin{list}{-}{April 13th, 2012 ({\bf 14 days})}
+  \item \emph{remote events}\\
+    Daemon socket ready to send and receive IP event messages.
+  \item \emph{Plugin workers interface}
+\end{list}
+% TODO Do we have something to say here?
+\begin{list}{-}{April 27th, 2012 ({\bf 14 days})}
+  \item \emph{Test plugin}
+    \subitem As much useful as time we have left to implement it.
+  \item \emph{Current state storing}\\
+    The idea is to let the user mark states which if \emph{reactord} is stopped, it will save that it was in this state before. When 
+    \emph{reactord} is started again, it will begin the state machine at this state instead of the initial state.
+    \subitem Define syntax.
+    \subitem Parser function.
+    \subitem Saver function.
+    \subitem Define files location by user.
+    \subitem Add the option to the control program.
+  \item \emph{Trigger events on action finalization}\\
+    We want a kind of event detected by \emph{reactord} itself, because its \emph{reactord} the software that generates it.
+    This is the finalization of an action, so we can make a state machine wait until an action terminated. The events would be 
+    finalize, error and success.
+  \item \emph{Performance analysis}\\
+    This is the last task because we want to test the whole software.
+\end{list}
+\begin{list}{-}{{\bf May 30th, 2012 ( 33 days)}}
+  \item \emph{Write this document}
+\end{list}
+So the final deadline of the project is 05-30-2012, and the total number of days of this final project is 201 days. We have to take into
+account that between these days there are holidays.
+% TODO Extended list of tasks from the report, with a description for each task.
+% \section{Temporal distribution}
+% TODO Gantt diagram with explained timings.
+\section{Final deviation}
+The final deviation from the initial planning is not very relevant, even though some tasks hasn't been finally performed. That was
+actually expected, and that's why in the last deadline we put the less important tasks.\\
+Now we are going to list the deviations. We have to take into account that every time we change any deadline, the following deadlines are
+altered as well because they need the same time as before. We are not going to explain all the deadlines modifications, only the ones
+that needed a different amount of time than expected.\\
+\begin{list}{-}{The deviations are explained as follows:}
+  \item {\bf February 2nd, 2012} -> February 9th, 2011 (7 days more)\\
+    I had never used \emph{Autotools} before, and in the beginning its usage seems a little tricky. The problem also was finding the proper
+    structure of the source files.
+  \item {\bf February 16th, 2012} -> March 1th, 2011 (7 days more)\\
+    The problem here was a bad and hard implementation of the protocol between the daemon and the \emph{reactorctl}. The right
+    reimplementation took its time.
+  \item {\bf March 9th, 2012} -> March 20th, 2012 (3 days less)\\
+    Once the protocol was defined, the control program was really easy to develop. All the hard work was already in the daemon.
+  \item {\bf March 16th, 2012} -> March 23th, 2012 (4 days less)\\
+    Easier to make than expected. Once we learned the usage of \emph{Libtool} the work was just moving code and changing includes.
+  \item {\bf April 27th, 2012} -> April 27th, 2012 (7 days less)\\
+    This is the deadline for the implementation process, so we did not change it. But already were a week behind the schedule, so there
+    were things that couldn't be done. Finally we only made the first point, a simple plugin implementation that can be used as an example.
+\end{list}
+
+\section{Budget}
+Here we will deem the economic cost for the realization of this project in a real environment.
+\subsection{Software}
+In this section we will analyse the costs of the software needed to develop this project. As we are talking about software and its price
+depends on its license and the use that we make of it, we will specify the the license. \emph{Table \ref{tab:soft}} shows these costs.
+\begin{table}[h]
+  \begin{center}
+    \begin{tabular}{ l c | p{2.5cm} |}
+      \cline{2-3}
+      & \multicolumn{1}{|l|}{License} & Cost \\ \hline
+      \multicolumn{1}{|l|}{GCC} & \multicolumn{1}{|c|}{GPLv3} & 0€\\ \hline
+      \multicolumn{1}{|l|}{GNU Build System} & \multicolumn{1}{|c|}{GPLv3} & 0€  \\ \hline
+      \multicolumn{1}{|l|}{GIT} & \multicolumn{1}{|c|}{GPLv2} & 0€ \\ \hline
+      \multicolumn{1}{|l|}{KDevelop} & \multicolumn{1}{|c|}{GPLv2} & 0€ \\ \hline
+      \multicolumn{1}{|l|}{Kile} & \multicolumn{1}{|c|}{GPLv2} & 0€ \\ \hline
+      \multicolumn{1}{|l|}{Valgrind} & \multicolumn{1}{|c|}{GPLv2} & 0€ \\ \hline
+      \multicolumn{1}{|l|}{GLib} & \multicolumn{1}{|c|}{LGPLv2} & 0€ \\ \hline
+      \multicolumn{1}{|l|}{libevent} & \multicolumn{1}{|c|}{BSD} & 0€ \\ \hline
+      \multicolumn{1}{|l|}{Check} & \multicolumn{1}{|c|}{LGPL} & 0€ \\ \hline
+      \multicolumn{1}{|l|}{Ubuntu} & \multicolumn{1}{|p{2.5cm}|}{Mainly the GNU GPL and various other free software licenses} & 0€ \\
+      \hline
+      \hline
+      \multicolumn{1}{|l}{ Total} & & {\bf 0€}\\
+      \hline
+    \end{tabular}
+  \end{center}
+  \caption{Software cost}
+  \label{tab:soft}
+\end{table}
+This is an advantage that usually comes with FLOSS, its also payment free.
+\subsection{Hardware}
+In the \emph{table \ref{tab:hard}} we show the hardware costs of our project. As we can see we only have a laptop and the source code hosting server.
+The server is a free service for open-source projects, and the laptop is a mid-class computer, enough for our goals.\\
+The recovery field is a factor to multiply to the cost. To calculate it we make the inverse of the time in which the hardware cost will be
+recovered multiplied by the time it will be used for this project.
+\begin{table}[h]
+  \begin{center}
+    \begin{tabular}{ l c c c | c |}
+      \cline{2-5}
+      & \multicolumn{1}{|l|}{Units} & \multicolumn{1}{|c|}{Recovery} & \multicolumn{1}{|c|}{Cost} & Total \\ \hline
+      \multicolumn{1}{|l|}{Dell XPS M1330} & \multicolumn{1}{|c|}{1} & \multicolumn{1}{|c|}{0.25} &\multicolumn{1}{|c|}{1.100€} & 275€ \\ \hline
+      \multicolumn{1}{|l|}{Source code hosting (GitHub)} & \multicolumn{1}{|c|}{1} & \multicolumn{1}{|c|}{0} &\multicolumn{1}{|c|}{0€} & 0€\\
+      \hline
+      \hline
+      \multicolumn{1}{|l}{Total} & & & & {\bf 275€}\\
+      \hline
+    \end{tabular}
+  \end{center}
+  \caption{Hardware cost}
+  \label{tab:hard}
+\end{table}
+\subsection{Personal}
+This is the cost of the work-power for this project. We separate it in three roles with different costs per hour. All of them were
+performed by me. The total number of hours stated by the rules of the final project is 600.\\
+The results are shown in \emph{table \ref{tab:personal}}.
+\begin{table}[h]
+  \begin{center}
+    \begin{tabular}{ l c c | c |}
+      \cline{2-4}
+      & \multicolumn{1}{|l|}{Hours} & \multicolumn{1}{|c|}{Cost/hour} & Total \\ \hline
+  %     \multicolumn{1}{|l|}{Chief project engineer} & \multicolumn{1}{|c|}{} & \multicolumn{1}{|c|}{30€} & \\ \hline
+      \multicolumn{1}{|l|}{Architect} & \multicolumn{1}{|c|}{190} & \multicolumn{1}{|c|}{60€} & 11.400€ \\ \hline
+      \multicolumn{1}{|l|}{Software analyst} & \multicolumn{1}{|c|}{160} & \multicolumn{1}{|c|}{50€} & 8.000€\\ \hline
+      \multicolumn{1}{|l|}{Programmer} & \multicolumn{1}{|c|}{250} & \multicolumn{1}{|c|}{30€} & 7.500€\\
+      \hline
+      \hline
+      \multicolumn{1}{|l}{Total} & & & {\bf 26.900€}\\
+      \hline
+    \end{tabular}
+  \end{center}
+  \caption{Personal cost}
+  \label{tab:personal}
+\end{table}

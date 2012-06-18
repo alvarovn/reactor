@@ -1,0 +1,200 @@
+\chapter{Introduction}
+% TODO Something similar to the report's abstract, first summarizing what we intend to solve, and then explain what this chapter is about.
+Since IBM mainframes systems era, job schedulers\footnote{Should not be confused with process scheduling, which is 
+the assignment of currently running processes to CPUs by the operating system.} are an important part of the IT infrastructure.
+They are in charge of running background and unattended executions, and are typically used for system maintenance and administration jobs 
+such as hard drive defragmentation, system updates check or system clock synchronization. However, they are also used by final system 
+users to manage their jobs, like reminders or resource intensive processes.\\
+Job schedulers must decide which job to run and when. There are some schemes or parameters that can be taken into account for taking
+these decisions\cite{wp:js}.\\
+\begin{list}{-}{Some of the most used are:}
+  \item Defined execution time
+  \item Elapsed execution time
+  \item Execution time given to user
+  \item Job priority
+  \item Compute resource availability
+  \item Number of simultaneous jobs allowed for a user
+  \item Availability of peripheral devices
+  \item Occurrence of prescribed events
+\end{list}
+\emph{cron}, probably the most popular job scheduler in the UNIX world, only considers the first parameter from the list, which is 
+probably the simpler to use and the most functional. According to Wikipedia\cite{wp:cron}:
+\begin{quote}
+  \emph{
+    ``cron is a time-based job scheduler in Unix-like computer operating systems. cron 
+    enables users to schedule jobs (commands or shell scripts) to run periodically at 
+    certain times or dates. It is commonly used to automate system maintenance or 
+    administration, though its general-purpose nature means that it can be used for other 
+    purposes, such as connecting to the Internet and downloading email.''
+  }
+\end{quote}
+As we can read in this entry, \emph{cron} is claimed to be a general-purpose job scheduler. But we can be more accurate and say that it is 
+general-purpose in terms of 'action', but not in terms of 'reaction'. In other words, \emph{cron} can execute any action, but as we 
+said before, it only considers the defined execution time to do so, which we could refer to it as just one reaction parameter.\\
+There are more popular services with job-scheduling capabilities based on other parameters like \emph{udev}, which is a device manager that 
+can run shell commands when the availability of some peripheral device changes. Or \emph{syslog}, that can also run shell commands when 
+it receives a log message from an application. Receiving a log message is not a listed scheduling parameter, but it is easy to notice that
+the message can be considered an event. In fact, most of those listed scheduling schemes can be defined as occurrences of prescribed 
+events. The rest of them are states that need to be looked up.\\
+Our software project, called \emph{reactor} so far, is a general-purpose job scheduler and event handler. Its main goal is to be 
+general-purpose on both 'action' and 'reaction' ways.
+\\
+By now we have set out some basic concepts about job-scheduling that will be present for the rest of this final report. On the next 
+sections to come we are going to expose a use case of this software project. We will also make a brief statement about the goals to 
+achieve according to this use case, and explain the first decisions made to develop the solution.\\
+\emph{reactor} is intended to survive this final project, so there will be forecast goals that would not be implemented at the time this 
+document is released. All this will be detailed.\\
+As a final remark I want to confirm that English is not my mother tongue, but we found it useful to write this document in English so it
+could be useful to a wider range of people, if any.
+
+% \section{Final report contents summary}
+% TODO Explain the chapters on blocks.
+
+\section{Motivation}
+\label{moti}
+% TODO This is not a mandatory section, but it would be good to explain how the idea came in mind and why do we want 
+%   to implement it as a final project.
+In the last years a big wave of mobile devices with integrated GPS sensors came in to stay. We are talking about smartphones, tablets,
+digital cameras... Handy and very portable devices. But nowadays you can also get geolocation information from not-so-portable devices
+like a laptop or a desktop computer. You can obviously connect your car's GPS to the computer, and if the controller allows it, you will 
+be able to do exactly the same as with an smartphone, but this is not a usual use case. A most common situation is to be connected to the
+internet and expect location-related results from a web search, without extra peripherals and hassles. This is something that work
+thanks to Wi-Fi and ISP IP geolocation databases.\\
+So we have a bunch of devices able to geolocate themselves. What can we do with such a feature? A lot of things have been done, but the
+major part of them seem to be a functionalities for the services providers more than for the users, for example showing location-related
+advertisements or creepy user tracking. We can make a good use of it by making a geolocation-based job scheduler, so the devices 
+geolocation would be the reaction parameter for our job scheduler. For instance we could automatically set our smartphone in silent mode 
+when we are at the theatre. This was the first idea that came in mind about a good personal project to develop. A more or less simple 
+job scheduler daemon running along with cron if not with more job schedulers, without any communication between them. This was not 
+enough, so the idea of the project began to become bigger and bigger, and so it became more abstract and modular. Also mobile devices have
+more sensors than GPS, like gyroscopes and accelerometers, that could be used too. We wanted a job-scheduler with the ability of reacting 
+to several parameters, which would be able to interact between them. Something like 'cron meets GPS and more'.\\
+\\
+Making money is usually the main motivation for a project, but this is not our case because there is no intention to sell it. The project 
+will be FLOSS\footnote{Free/Libre Open-Source Software}, so the real motivations are those that usually come with this kind of projects. 
+Learning from the experience of developing a long-term personal project from scratch is the major one. Then the project should be useful 
+to myself as by now I am the only target interested on it. Finally it may also be useful for other people not involved in the project 
+development, what is expected and highly desirable to the point that the project is developed with them always in mind.
+% TODO Anything more?
+\section{Use case}
+\label{usecase}
+Here we describe a use case for this project so we can have a reference in mind for the rest of the document to illustrate
+and help us to understand it.\\
+\\
+For this use case we will think of a web developer who works at an office with his own laptop.\\
+He begins the day at home, where with his laptop checks his personal mail account and sets some tasks and appointments to his personal 
+calendar software. Also his smartphone is in 
+normal mode (both ringtone and vibration are on).\\ % Here we can make reactor trigger some action from a calendar alert
+Thanks to our software, when he arrives to the office the cellphone is in vibration mode. Also when he starts his computer there, the
+environment has changed. Now the email notifier is not checking personal email accounts, but work accounts. The calendar shown is the
+company one, and the wallpaper is more sober. It also automatically pulls the new commits from the remote server, asking for manual actions
+if required, and starts his favourite IDE. Afterwards, while he is working, every error that the company's production http server logs is 
+notified to him.\\
+When the working day is over the default behaviour is restored. The cellphone returns to the normal mode, he receives email notifications
+from his personal accounts and the personal calendar is enabled again. But is not until he leaves the office that he will stop receiving 
+notifications from the server's system log and the company's email, and the company's calendar will be hidden.\\
+\\
+We don't have any maintenance or system administration task done by our software in this use case, and this is done in purpose. We have 
+seen before that job schedulers are typically use for those kind of tasks, but they are transparent for the user. So if we put 
+administration tasks on the use case, the user would not be aware of the existence of our software and would not make direct use of it.
+We preferred to break with the cliché and show a tool useful not only for operating systems internals but also for the final user. Assuming
+that it is useful for maintenance is just going a tiny step further from the use case.
+% TODO This section must be modified while changes are needed for other sections.
+\section{Brief goals description}
+\label{bgoals}
+The goals will be defined in detail in \emph{section \ref{sec:solution}}, after explaining the problem to solve. In this section
+we want to show the main goals that can be extracted from the use case.\\
+\begin{list}{-}{}
+  \item Event driven
+    \subitem It should react to abstract events, such as 'arrived to the office', 'error log in the http server' or 'beginning of the working 
+      day'...
+  \item Execution of shell commands
+    \subitem All the actions described in the use case can be performed by command-line. That is what makes it general purpose in 'action'
+      terms.
+  \item State aware
+    \subitem Notice that in the use case our web developer can receive error logs notifications from the server when he is at the office,
+      but not when he is not there. So our software must be able to know when he is at work and only then react to 'error log in the http
+      server'. When we are out of this state these events must be ignored. In the use case there are more examples of this, but they are
+      not so clear.
+  \item Communication between systems with our job-scheduler
+    \subitem Also in the communication of the error log, being the http server a remote machine, one can see that there is a network 
+      communication between systems.
+  \item Multiple kinds of events
+    \subitem The job-scheduler is little limited by the kind of events it can receive.
+\end{list}
+
+\section{Preliminary decisions}
+\label{sec:preli}
+Before the specification there are some decisions that were taken for a number of reasons like philosophy, ideals, learning goals... 
+The fact that some of these decisions were made before we specified what we want to do may be taken as erroneous. Actually, those decisions
+could be done after the specification and it wouldn't change anything, some of them even after the implementation with the same result. But
+still, those decisions were personal requisites for the software project and for the final project. This is why we will also justify the 
+timing and not only the decisions themselves.\\
+Those decisions are related to the software license election and the platform for the project to head.
+\subsection{License}
+% TODO Explain the license election, talk about FLOSS software, compare some licenses, GPLv2 & GPLv3...
+From the beginning there was something that was out of discussion about this project, and it was the kind of license the software project
+was going to be under. As we said in a previous section, \emph{reactor} is a FLOSS project, which according to the FSF\footnote{Free 
+Software Foundation is non-profit corporation that claims to have a '\emph{worldwide mission to promote computer user freedom and to defend 
+the rights of all free software users}'. The activities for which they are mainly known are the GNU Project, the GNU Licenses and 
+pro-FLOSS activism\cite{fsf}. For more information: \url{http://fsf.org}} is software that follows four rules or freedoms to procure.
+\begin{list}{-}{These freedoms are\cite{fsf}:}
+  \item The freedom to run the software, for any purpose.
+  \item The freedom to study how the software works, and change it so it does your computing as you wish.
+    \subitem Access to the source code is a precondition for this. 
+  \item The freedom to redistribute copies so you can help your neighbour.
+    \subitem By doing this you can give the whole community a chance to benefit from your changes. 
+  \item The freedom to distribute copies of your modified versions to others.
+\end{list}
+This is not the only interpretation of what free software means, but probably is the most general and accepted one.\\
+So yes, we agree with that and want it for our software. An idea is nothing more than a set of other ideas that other people had before,
+so they don't belong to anybody and they can not be sealed, hidden or restricted. Otherwise it would be a childish selfish behaviour. And 
+software is nothing more than a written implementation of ideas.\\
+But those four freedoms are not enough for what we want. We like the giving part of the deal, but we also want to get something. If 
+someone takes advantage of the second freedom, we want these changes to be public, because they are probably improvements of a project
+we designed, so it is a derivative work, and we have the right to check on them and add them back to the initial project.\\
+That limits the choice of the software license. Doing a quick check on the major existing licenses and their main characteristics we 
+easily arrive to the conclusion that the license that fits best to our needs is the GPL. It requires the derivative work to be released
+with the same terms of the license, without exceptions.\\
+But there is another choice to make about the license and it is the version. The GPL has three versions. GPLv1 is the one that essentially
+protects the four freedoms stated by the FSF by forcing the distributors of the software to publish the source code and license under
+the same terms the modified versions, so the mix of licenses don't diminish the overall value of them. The GPLv2 adds some kind of 
+protections to patent fees from software corporation to free software distributors. The GPLv2 licensed software only can be distributed 
+without any condition or restriction like for example fees, if not it can not be distributed. The GPLv3 goes further on the software patent 
+protection, and also states controversial clauses against the 'tivoization'. Tivoization is how the FSF calls the practice of limiting 
+the execution of free software by the hardware. Its name comes from the TiVo device, which runs GPLv2 licensed software and follows the
+terms of use, but it doesn't let run your modified version of the code. GPLv3 states that the software must not be restricted by the 
+hardware in which it comes\cite{rms:gplv3}. This is controversial because some relevant developers think that telling how the hardware 
+has to be in order to run GPLv3 software is too intrusive\cite{k:gplv2}.
+We finally stand for the GPLv2 for three reasons. The first one is that the GPLv2 is stronger than GPLv1 (which is basically deprecated).
+The second reason is that hardware intrusiveness arguments feels strong enough. We are making software and we don't care about the hardware
+design in which it runs, it is not our work. We may prefer open hardware, but this is a personal decision, not something we want people to
+be forced to. The last one is that we always can change our mind and upgrade to GPLv3 if we find it better, as it is designed to be easy 
+to upgrade to.\\
+There is one more special case to take into account and it is the license for the libraries, if any (and as we will see in the next 
+chapters, we will have libraries). The problem of the GPL with the libraries is that the main program that links to a GPL library must be
+GPL too, and that is something that we don't want. The solution is using the LGPLv2, which is very similar to the GPLv2 but allows the 
+code to be linked to any program.\\
+So, in conclusion, our software project will be under GPLv2 and LGPLv2.
+\subsection{Platform}
+Taking by platform the hardware architecture and the software framework in which our project is going to run, here we are going to show the
+main platforms available, pros and cons, which one we choose and why. This will be centred on the software framework as the actual
+interface we are going to deal with. But we will choose it in regard to the hardware in which it can run.\\
+So we have mainly two big families of software platforms to which we can focus our project to, Microsoft Windows and POSIX operating
+systems. Microsoft Windows is a widely used privative operating system on desktop and laptop form factors. More than a family, as UNIX-like
+operating systems are, they are all versions of the same OS as all of them are released by the same company and they drop support for old 
+versions when they launch new products. However, its API is usually quite compatible between versions. \\
+In the other hand we have POSIX operating systems, which can also be called UNIX-like operating systems. POSIX is a standard API definition
+for software compatibility with variants of Unix and other operating systems. So, long story short, UNIX-like operating systems are a big
+bunch of operating systems running in every hardware architecture, that share almost the same API. Into that category fall the popular Mac 
+OS X, iOS, Linux, Solaris and HP/UX.\\
+We prefer for our software the idea of using an standard API that works in many operating systems and devices than a API widely adopted but
+strictly restricted by a company and their products. That brings us a wide range of requirements to rely on. Also, we are interested on 
+focus our project on Linux kernel, which is very stable and developer friendly, as well as GPLv2 licensed and very adopted on 
+ultra-portable devices and mainframes. So the decision is made, our software project will be oriented to the UNIX platform.\\
+There is also the possibility of making \emph{reactor} cross-platform by choosing the correct API at compilation time with tools like 
+Autoconf and using cross-platform libraries. The time of this final project is limited and that makes us choose not to support Windows from 
+the beginning, as it would take time to learn an API that us, as developers, are not interested into. May be in the future if there are
+users interested.\\
+This decision was made before the specification because we had a personal interest on learning POSIX and particularly on Linux API. Also 
+the pros and cons we state before are valid for almost every project we could do.

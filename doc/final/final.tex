@@ -1,0 +1,87 @@
+\documentclass[11pt,final,a4paper]{book}
+% \usepackage[utf8x]{inputenc}
+% \usepackage{fullpage}
+\usepackage{fontspec}
+\usepackage{url}
+\usepackage{hyperref,bookmark}
+\usepackage[hypcap]{caption}
+\usepackage{subcaption}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage{multirow}
+\usepackage{bbding}
+\usepackage{pfc-fib} % portada	
+\usepackage{appendix}
+\usepackage{setspace}
+\usepackage{minted}
+\usepackage[nottoc,numbib]{tocbibind}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  filecolor=black,
+  urlcolor=black,
+  % pdftitle=,
+  % pdfauthor=,
+  % pdfsubject=,
+  % pdfkeywords=
+}
+
+%opening
+\title{Manegador d'esdeveniments per a sistemes UNIX}
+\author{Álvaro Villalba Navarro}
+
+\volume{1/1}
+\date{\today}
+
+\dept{Departament d'Arquitectura de Computadors}
+\qualifications{Enginyeria Informàtica}
+\credits{37,5}
+
+
+\speaker{Juan José Costa Prats}
+\president{Yolanda Becerra Fontal}
+\member{Montserrat Maureso Sánchez}
+\secretary{Juan José Costa Prats}
+% % % % % % % % % % % % % % % 
+
+\addtolength{\evensidemargin}{-.90in}
+\addtolength{\textwidth}{0.90in}
+\setstretch{1.3} % line spacing
+% \setlength{\oddsidemargin}{15.5pt} 
+% \setlength{\evensidemargin}{15.5pt}
+
+% \renewcommand{\familydefault}{\sfdefault} % font
+\renewcommand*\arraystretch{1.5}
+
+% \setcounter{tocdepth}{1}
+
+\begin{document}
+	
+
+\makecovers
+
+\tableofcontents
+
+\input{introduction.tex}
+\input{specification.tex}
+\input{design.tex}
+\input{implementation.tex}
+\input{planning.tex}
+% \input{economicstudy.tex}
+\input{conclusion.tex}
+
+% % APPENDICES
+% \begin{appendices}
+% \input{coderepos.tex}
+% \input{freesoftware.tex}
+% \end{appendices}
+
+% \listoffigures
+\nocite{*}
+\bibliography{bibliography}
+\bibliographystyle{plain}
+
+\end{document}
+  

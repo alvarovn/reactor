@@ -1,0 +1,137 @@
+% ==============================================================================
+% DEFINICIO DELS CAMPS
+% ==============================================================================
+\def\title#1{\gdef\@title{#1}}
+\def\subtitle#1{\gdef\@subtitle{#1}}
+\def\volume#1{\gdef\@volume{#1}}
+\def\date#1{\gdef\@date{#1}}
+
+\def\author#1{\gdef\@author{#1}}
+\def\coauthor#1{\gdef\@coauthor{#1}}
+
+\def\dept#1{\gdef\@dept{#1}}
+\def\qualifications#1{\gdef\@qualifications{#1}}
+\def\credits#1{\gdef\@credits{#1}}
+
+\def\speaker#1{\gdef\@speaker{#1}}
+\def\president#1{\gdef\@president{#1}}
+\def\member#1{\gdef\@member{#1}}
+\def\secretary#1{\gdef\@secretary{#1}}
+
+
+% ==============================================================================
+% MACRO PER A CREAR LES DUES PRIMERES PAGINES
+% ==============================================================================
+\def\makecovers{
+\begin{titlepage}
+\pagestyle{empty}
+% Pagina 1
+% ------------------------------------------------------------------------------
+\newpage
+\small {
+   \parbox[c][37mm][c]{\textwidth}{} % Y displacement
+   \\
+   \makebox[40mm][l]{} % X displacement
+   \parbox[t][55mm]{112mm}{
+      \begin{description}
+      \setlength{\itemsep}{0mm}
+         \item
+            \begin{tabular}{ @{\hspace{-2mm}}l @{\hspace{2mm}} p{98mm} l }
+               \emph{\textbf{Títol:}}&\@title&\rule[-19pt]{0mm}{26pt}\\
+            \end{tabular}
+         \item[\emph{Volum:}] \@volume
+         \item[\emph{Alumne:}] \@author
+         \item[]
+         \item[\emph{Director/Ponent:}] \@speaker
+         \item[\emph{Departament:}] \@dept
+         \item[\emph{Data:}] \@date
+      \end{description}
+   }
+   \\*
+   \\*
+   \\*
+   \begin{figure}[h]
+	\centering
+	\includegraphics[width=0.4\textwidth,keepaspectratio]{img/logo}
+   \end{figure}
+   \begin{center}
+    \tiny{reactor logo \copyright 2012 Sergi Morales Faure}
+   \end{center}
+
+}
+
+
+% Pagina 2 (buida)
+% ------------------------------------------------------------------------------
+
+\cleardoublepage
+
+% Pagina 3
+% ------------------------------------------------------------------------------
+\newpage
+\begin{thirdpage}
+\large{
+   \parbox[c][2.8mm][c]{\textwidth}{} % Y displacement
+   \par
+   \renewcommand{\arraystretch}{1.5}
+   \begin{tabular}{p{1.4in}p{4.15in}}
+   &\\
+   \hline
+   \multicolumn{2}{l}{\textbf{DADES DEL PROJECTE}}\\
+   &\\
+   \emph{Títol del projecte:} & \@title \\
+   &\\
+   \emph{Nom de l'estudiant:} & \@author \\
+   \emph{Titulació:} & \@qualifications \\
+   \emph{Crèdits:} & \@credits \\
+   \emph{Director/Ponente:} & \@speaker \\
+   \emph{Departament:} & \@dept \\
+   &\\
+   \end{tabular}
+
+   \begin{tabular}{p{0.8in}p{4.75in}}
+   \hline
+   \multicolumn{2}{l}{\textbf{MEMBRES DEL TRIBUNAL} \emph{(nombre y firma)}}\\
+   &\\
+   \emph{President:} & \@president \\
+   &\\
+   \emph{Vocal:} & \@member \\
+   &\\
+   \emph{Secretari:} & \@secretary \\
+   &\\
+   \end{tabular}
+
+   \begin{tabular}{p{2.3in}p{3.25in}}
+   \hline
+   \multicolumn{2}{l}{\textbf{QUALIFICACIÓ}}\\
+   &\\
+   \emph{Qualificació numèrica:} & \\
+   \emph{Qualificació descriptiva:} & \\
+   &\\
+   \emph{Data:} & \\
+   &\\
+   \hline
+   \end{tabular}
+}
+
+\end{thirdpage}
+
+% Pagina 4 (buida)
+% \cleardoublepage ~ \cleardoublepage
+\cleardoublepage
+
+\end{titlepage}
+\setcounter{page}{1}
+}
+
+\newenvironment{thirdpage}{\begin{list}{}{%
+   \setlength{\topsep}{0pt}
+   \setlength{\leftmargin}{0pt}
+   \setlength{\rightmargin}{0pt}
+   \setlength{\listparindent}{\parindent}
+   \setlength{\itemindent}{\parindent}
+   \setlength{\parsep}{0pt plus 1pt}
+   \addtolength{\leftmargin}{-0.4in}
+   \addtolength{\textwidth}{0pt}
+   \setstretch{1}
+}\item }{\end{list}}

@@ -23,7 +23,7 @@
 
 #include "libreactor.h"
 #include "libreactor-private.h"
-#include "reactorworkers.h"
+#include "rctrplugin.h"
 
 #include <sys/types.h>
 
@@ -44,38 +44,6 @@
 
 #define RULES_FILE "reactor.rules"
 
-// #define skip_blanks(c) \
-//             while (*c == '\t' || *c == ' ') \
-//                 c+=sizeof(char);
-#define skip_blanks(c, tl, sl, trim) \
-            if(trim){ \
-                while(c[tl] == '\t' || c[tl] == ' ' || c[tl] == '\n'){ \
-                    if(tl == 0) c+=sizeof(char); \
-                    else if(tl > 0){ \
-                        tl+=sizeof(char); \
-                        sl+=sizeof(char); \
-                    } \
-                } \
-            }
-
-#define skip_blanks_simple(c, i) \
-            while(c[i] == '\t' || c[i] == ' ' || c[i] == '\n'){ \
-                i+=sizeof(char); \
-            }
-                
-// #define skip_noblanks(c, i) \
-//             while (c[i] != '\n' && c[i] != '\t' && c[i] != ' ' && c[i] != '&' && c[i] != '#' && c[i] != '\0') \
-//                 i++;
-
-#define skip_noblanks_and(c, i, d) \
-            while(  (c[i] != '\n') && \
-                    (c[i] != '\t') && \
-                    (c[i] != ' ') && \
-                    (c[i] != '\0') && \
-                    (c[i] != d) \
-            ){ \
-                i++; \
-            }
             
 struct reactor_d{
     RHashTable *eventnotices;
@@ -103,35 +71,6 @@ struct prop_action{
     RSList *enids;
 };
 
-struct rr_error{
-    int pos;
-    char *msg;
-    struct rr_error *next;
-};
-struct rr_token{
-    void *data;
-    struct rr_token *next;
-    struct rr_token *down;
-    int pos;
-};
-struct rr_expr{
-    int exprnum;
-    char tokensep;
-    char end;
-    bool trim;
-    struct rr_expr *subexpr;
-    struct rr_expr *next;
-};
-struct r_rule{
-    char *line;
-    struct rr_expr *expr;
-    int linen;
-    char *file;
-    struct rr_token *tokens;
-    struct rr_error *errors;
-    struct r_rule *next;
-};
-
 struct r_event{
     char *eid;
 //     int uid;
@@ -154,17 +93,8 @@ void free_users(struct r_user*);
 
 /* rules.c */
 #define LINE_SIZE 16384
-void tokens_free(struct rr_token *tokens, void (*free_func)(void *data));
-struct rr_token* get_token(struct rr_token *tokens, unsigned int tnum);
-struct rr_error* new_error(int pos, char *msg);
-void errors_free(struct rr_error *errors);
-struct rr_expr* expr_new(int exprnum, char *tokensep, char *end, bool trim);
-void exprs_free(struct rr_expr *expr);
-void rules_free(struct r_rule *rrule, void (*free_func)(void *data));
-void r_rules_free(struct r_rule *rule);
-void tokenize_rule(struct r_rule *rule);
-struct r_rule* rule_parse(const char *line, const char *file, int linen, uid_t uid);
-struct r_rule* parse_rules_file(const char *filename, unsigned int uid);
+
+struct r_rule* r_rule_parse(const char *line);
 /* eventnotice.c */
 
 typedef struct _eventnotice EventNotice;
@@ -227,12 +157,12 @@ enum rmsg_type reactor_add_rule_handler(struct reactor_d *reactor, struct r_rule
 int reactor_event_handler(struct reactor_d *reactor, const char *msg);
 enum rmsg_type reactor_rm_trans_handler(struct reactor_d *reactor, char *msg);
 
-/* workers.c */
+/* plugins.c */
 struct r_worker{
     void *modhandler;
     char *name;
-    RWMainFunc mainfunc;
-    RWInitFunc initfunc;
+    RPMainFunc mainfunc;
+    RPInitFunc initfunc;
     pthread_t pt;
     struct r_worker *next;
 };

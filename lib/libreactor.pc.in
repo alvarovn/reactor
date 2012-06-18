@@ -3,8 +3,10 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
+reactorplugindir=@reactorplugindir@
+
 Name: libreactor
-Description: Library to control reactor
+Description: reactor library
 Version: @PACKAGE_VERSION@
 Libs: -L${libdir} -lreactor
-Cflags: -I${includedir}
+Cflags: -I${includedir}/reactor

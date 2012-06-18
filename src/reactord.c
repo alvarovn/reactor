@@ -116,9 +116,9 @@ static void attend_cntrl_msg(int sfd, short ev, void *arg){
             break;
         case ADD_RULE:
             /* TODO Change uid to the user who sent the rule */
-            data = (void *) rule_parse(msg->msg, NULL, -1, 0);
+            data = (void *) r_rule_parse(msg->msg);
             response.hd.mtype = reactor_add_rule_handler(&reactor, (struct r_rule *) data);
-            r_rules_free((struct r_rule *) data);
+            rules_free((struct r_rule *) data);
             send_cntrl_msg(psfd, &response);
             free(msg->msg);
             break;
@@ -218,12 +218,12 @@ static void init_rules(){
         strcpy(&filename[fnln], "/.");
         fnln += strlen("/.");
         strcpy(&filename[fnln], RULES_FILE);
-        for(rules = parse_rules_file(filename, users->pw->pw_uid);
+        for(rules = parse_rules_file(filename, r_rule_parse);
             rules != NULL;
             rules = rules->next){
                 reactor_add_rule_handler(&reactor, rules);
         }
-        r_rules_free(rules);
+        rules_free(rules);
     }
     
 }
@@ -296,7 +296,7 @@ int main(int argc, char *argv[]) {
         err("Unable to create the remote socket.");
         goto exit;
     }
-    load_all_modules(WORKERSDIR, workers);
+    load_all_modules(REACTORPLUGINDIR, workers);
     
     event_set(&cntrlev, cntrlsfd, EV_READ | EV_PERSIST, &attend_cntrl_msg, NULL);
     event_add(&cntrlev, NULL);

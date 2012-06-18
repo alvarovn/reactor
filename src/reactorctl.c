@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         { "remove-transition", required_argument, NULL, 't' }
     };
     
-    const char *optstring = "e:r:t:";
+    const char *optstring = "e:a:r:";
     struct r_msg msg;
     
     if((opt = getopt_long( argc, argv, optstring, options, &optindex )) == -1){
@@ -56,10 +56,10 @@ int main(int argc, char *argv[]) {
                 case 'e':
                     msg.hd.mtype = EVENT;
                     break;
-                case 'r':
+                case 'a':
                     msg.hd.mtype = ADD_RULE;
                     break;
-                case 't':
+                case 'r':
                     msg.hd.mtype = RM_TRANS;
                     break;
                 default:
@@ -71,10 +71,10 @@ int main(int argc, char *argv[]) {
             mtype = send_cntrl_msg(psfd, &msg);
             switch(mtype){
                 case RULE_MULTINIT:
-                    fprintf(stderr, "Trying to set multiple initial transitions to the same state machine, the transition won't be added\n");
+                    fprintf(stderr, "Trying to set multiple initial rules to the same state machine, the rule won't be added\n");
                     break;
                 case ARG_MALFORMED:
-                    fprintf(stderr, "Transition malformed\n");
+                    fprintf(stderr, "Rule malformed\n");
                     break;
                 case NO_TRANS:
                     fprintf(stderr, "Transition '%s' doesn't exist\n", msg.msg);

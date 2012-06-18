@@ -11,22 +11,27 @@ AM_LDFLAGS =	$(GLIB_LIBS) \
 		-ldl \
 		-export-dynamic
 
-ACLOCAL_AMFLAGS = -I m4
+ACLOCAL_AMFLAGS = -Im4
 
-###############################
-# libreactor & reactorworkers #
-###############################
+##############
+# libreactor #
+##############
+
 LIBREACTOR_CURRENT = 0
 LIBREACTOR_REVISION = 0
 LIBREACTOR_AGE = 0
 
-include_HEADERS =	lib/libreactor.h \
-			lib/reactorworkers.h
+pkginclude_HEADERS =	lib/libreactor.h \
+			lib/libreactor-ctl.h \
+			lib/libreactor-parser.h \
+			lib/rctrplugin.h
+
 lib_LTLIBRARIES = 	lib/libreactor.la
 
 lib_libreactor_la_SOURCES =	lib/libreactor-private.h \
 				lib/log-private.c \
 				lib/cntrl.c \
+				lib/parser.c \
 				lib/util-private.c
  
 lib_libreactor_la_LDFLAGS =	$(AM_LDFLAGS) \
@@ -50,10 +55,10 @@ src_reactord_modules = 	src/reactor.h \
 			src/action.c \
 			src/remote.c \
 			src/inputhandlers.c \
-			src/workers.c
+			src/plugins.c
 
 src_reactord_SOURCES =	src/reactord.c \
-			$(src_reactord_modules)
+			$(src_reactord_modules) 
 
 src_reactord_LDADD =	lib/libreactor.la
 
@@ -63,17 +68,17 @@ src_reactorctl_SOURCES =	src/reactor.h \
 src_reactorctl_LDADD =	lib/libreactor.la
 
 ###########
-# workers #
+# plugins #
 ###########
 
-pkglib_LTLIBRARIES = 		workers/files.la
+pkglib_LTLIBRARIES = 		plugins/files.la
 
-workers_files_la_SOURCES = 	workers/files.c
-workers_files_la_LDFLAGS =	-avoid-version \
+plugins_files_la_SOURCES = 	plugins/files.c
+plugins_files_la_LDFLAGS =	-avoid-version \
 				-module \
 				-shared \
 				-export-dynamic \
-				-export-symbols $(top_srcdir)/workers.syms
+				-export-symbols $(top_srcdir)/plugins.syms
 			
 
 #########

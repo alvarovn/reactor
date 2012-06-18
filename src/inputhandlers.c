@@ -30,7 +30,7 @@ enum rmsg_type reactor_add_rule_handler(struct reactor_d *reactor, struct r_rule
     enum rmsg_type cmt = ACK;
     char *fromstr,
          *tostr;
-    struct rr_token *eids;
+    struct rr_obj *eids;
     
     // TODO Check errors
     if(rule == NULL){
@@ -51,15 +51,15 @@ enum rmsg_type reactor_add_rule_handler(struct reactor_d *reactor, struct r_rule
         }
         goto end;
     }
-    if(rule->tokens == NULL){
+    if(rule->objs == NULL){
         // Comment or empty line
         // This is not valid by command line
         warn("Empty or commented rule received");
         cmt = ARG_MALFORMED;
         goto end;
     }
-    fromstr = (get_token(rule->tokens, RULE_FROM))->data;
-    tostr = (get_token(rule->tokens, RULE_TO))->data;
+    fromstr = (get_rule_obj(rule->objs, RULE_FROM))->data;
+    tostr = (get_rule_obj(rule->objs, RULE_TO))->data;
     init = (from = (State *) reactor_hash_table_lookup(reactor->states, fromstr)) == NULL;
     if(init){
         from = state_new(reactor, fromstr);
@@ -85,9 +85,9 @@ enum rmsg_type reactor_add_rule_handler(struct reactor_d *reactor, struct r_rule
     /* TODO     While we don't get from the event the shell to execute 
      *          the command, we should get the current shell and use it.
      */
-    trans_set_action(trans, (struct r_action *)(get_token(rule->tokens, RULE_RACTION))->data);
+    trans_set_action(trans, (struct r_action *)(get_rule_obj(rule->objs, RULE_RACTION))->data);
 
-    for(eids = (get_token(rule->tokens, RULE_EVENTS))->down; eids != NULL; eids = eids->next){
+    for(eids = (get_rule_obj(rule->objs, RULE_EVENTS))->down; eids != NULL; eids = eids->next){
         en = (EventNotice *) reactor_hash_table_lookup(reactor->eventnotices, eids->data);
         if(en == NULL){
             en = en_new(reactor, eids->data);
@@ -149,7 +149,7 @@ R_EXPORT int reactor_event_handler(struct reactor_d *reactor, const char *msg){
             }
             else currtrans = reactor_slist_next(currtrans);
     }
-    /* In case no action was executed, so no currtrans was cleared, we clear the currtrans of the las event */
+    /* In case no action was executed, so no currtrans was cleared, we clear the currtrans of the last event */
     en_clear_curr_trans(en);
     
     /* Insert into eventnotices the new current valid transitions */
@@ -186,11 +186,11 @@ enum rmsg_type reactor_rm_trans_handler(struct reactor_d *reactor, char *msg){
     }
     msg[msgp] = '\0';
     state = reactor_hash_table_lookup(reactor->states, (void *) msg);
-    state_ref(state);
     if(state == NULL){
         rmt = NO_TRANS;
         goto end;
     }
+    state_ref(state);
     msg[msgp] = '.';
     info("Removing transition %s...", msg);
     trans = state_get_trans(state);

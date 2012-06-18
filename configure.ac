@@ -2,7 +2,17 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.67])
-AC_INIT([reactor], [0.1.0], [vn.alvaro@gmail.com])
+
+# Versions used for apps, plugins, pkg-config files, and data,
+# as well as global and user prefs
+m4_define([reactor_version], [0.1])
+m4_define([reactor_plugin_version], [0.1])
+#m4_define([reactor_pkgconfig_version], [0.1])
+#m4_define([reactor_data_version], [0.1])
+#m4_define([reactor_sysconf_version], [0.1])
+#m4_define([reactor_user_version], [0.1])
+
+AC_INIT([reactor], [reactor_version], [vn.alvaro@gmail.com])
 AC_CONFIG_SRCDIR([src/reactord.c])
 AC_CONFIG_HEADERS([config.h])
 
@@ -54,8 +64,13 @@ AC_ARG_ENABLE(debug,
 #AM_CONDITIONAL(ENABLE_DEBUG, test "$enable_debug" = "yes")
 CFLAGS="$DEBUG_CFLAGS"
 
-AS_AC_EXPAND(LIBDIR, $libdir)
-AC_DEFINE_UNQUOTED(WORKERSDIR, "$LIBDIR/$PACKAGE", Define where the workers are located.)
+reactorplugindir="$libdir/$PACKAGE/reactor_plugin_version"
+
+AC_SUBST(reactorplugindir)
+
+AS_AC_EXPAND(REACTORPLUGINDIR, $reactorplugindir)
+
+AC_DEFINE_UNQUOTED(REACTORPLUGINDIR, "$REACTORPLUGINDIR", Define where the plugins are located.)
 
 ############################################
 # libevent checks copied from Tor project. #

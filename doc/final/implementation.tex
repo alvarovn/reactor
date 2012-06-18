@@ -1,0 +1,360 @@
+\chapter{Implementation}
+\label{sec:imp}
+% TODO Summary of the chapter
+First of all let's remember the most implementation-related preliminary decisions we took in \emph{section \ref{sec:preli}} about the 
+platform. We choose UNIX-like operating systems to focus from the beginning, and so we are using it's API (POSIX). For using this API
+we followed the indications of a book we think it worths a mention: \emph{The Linux Programming Interface}\cite{book:linuxapi}. This
+book, which has been a life saver for this project, not only specifies and explains with examples the Linux API, but also states which
+parts of the API are part of POSIX and in which versions, so it is easy to make software POSIX compliant.\\
+As we don't want to copy all the code from the project here, we are going to comment the pieces of code that need special attention. Also
+we are going to list and explain the tools used and the code structure followed for each part of the project.\\
+The source code of this project is available for review in the GitHub repository 
+\url{https://github.com/alvarovn/reactor}\cite{github:reactor}.\\
+In the repository we can also find the \texttt{README}\cite{readme}, where we have a user manual and a developer manual for \emph{reactor}.
+\section{Programming language}
+The programming language selection was made taking into account many points of view for our long term project. Being the project a 
+daemon running constantly in our machines, first of all we considered the efficiency as a critical point. This almost discarded all the 
+interpreted languages like Python or Ruby.\\
+The possibility of making \emph{reactor} a cross-platform project is desirable but not really important, so keeping efficiency as more 
+important we can also discard Java.\\
+So we want to use a low-level compiled language. Probably the most important languages we have left are C and C++. The decision between
+them is not easy, and it is almost deciding between a low-level imperative programming language and a low-level object oriented programming 
+language. From all the years in college I am more used to OOP for big projects design than imperative languages. Also as we can see in the
+previous section, the design uses classes. But this is not only about what I know to make this project more easy to develop, but to try 
+also to make it useful to others, and learn. Finally we decided to use C because not having the abstract layer of OOP makes us develop
+more efficiency conscious software and because making a big project with an imperative language was a challenge. But maybe, the main reason
+for using C instead of C++, is because the biggest part of system daemons we checked were developed in C (\emph{anacron}, \emph{udev},
+\emph{syslog-ng}, \emph{systemd}, \emph{upstart}...), so it is easier to adopt their design decisions. It is also a GNU Standard 
+recommendation, as C is a simpler language than C++ and more people knows it\cite{gnu:lang}.
+\section{Tools}
+Apart of the language we used several tools for the implementation. In this section we are going to name, describe and explain
+the use we made of them. The tools we are talking about are from the compiler to the IDE.\\
+\subsection{GLIBC}
+Probably the most obvious tool is the C standard library. In our specific case we are using \emph{GLIBC}\footnote{GNU C Library} which as 
+they say\cite{gnu:glibc}:
+\begin{quote}
+  \emph{``The GNU C Library is primarily designed to be a portable and high performance C library. It follows all relevant standards 
+	  including ISO C99 and POSIX.1-2008. It is also internationalized and has one of the most complete internationalization 
+	  interfaces known.''}
+\end{quote}
+So we have ``system calls'' and other basic facilities covered by it, such as string treatment functions or memory management.
+\subsection{GCC}
+\emph{GCC} is the compiler we use for our C code. It gives some useful language extensions to the ANSI C standard\cite{gnu:cext}, for 
+example
+the attribute assignment to functions, variables and types, useful for defining visibility and many other things. It is considered the
+standard compiler for several UNIX-like systems such as Linux or BSD, and also it works on non-UNIX OSes like Windows. Also it is 
+GPL-licensed.\\
+Notice that as they say, \emph{GCC} is a collection of compilers for several languages, including C++ and Java, although we use the C 
+compiler\cite{gnu:gcc}:
+\begin{quote}
+  \emph{``The GNU Compiler Collection includes front ends for C, C++, Objective-C, Fortran, Java, Ada, and Go, as well as libraries for 
+	  these languages (libstdc++, libgcj,...). GCC was originally written as the compiler for the GNU operating system. The GNU system
+	  was developed to be 100\% free software, free in the sense that it respects the user's freedom.''}
+\end{quote}
+We choose this compiler because is the most standard choice, but there were others to take into account, even to consider for the 
+future. For example \emph{CLang}.\\
+\emph{CLang} is the C frontend of the \emph{LLVM} compiler project. Its goal is to offer a replacement to 
+the GNU Compiler Collection (GCC). Development is sponsored by Apple. Clang is available under the University of Illinois/NCSA License. 
+Its main features are fast compiles with low memory use, more expressive diagnostics than \emph{GCC} and \emph{GCC} compatibility. It comes
+with a static analyser and it is written in C++.
+\subsection{GNU build system}
+The GNU build system is the popular name for a set of programs also known as \emph{Autotools}. Its purpose is to assist in making 
+source-code packages portable to many UNIX-like systems.
+\begin{list}{-}{This set is formed by:}
+  \item \emph{GNU Autoconf}\cite{gnu:autoconf}\\
+    \begin{quote}
+      \emph{``Autoconf is an extensible package of M4 macros that produce shell scripts to automatically configure software source code 
+	packages. These scripts can adapt the packages to many kinds of UNIX-like systems without manual user intervention. Autoconf 
+	creates a configuration script for a package from a template file that lists the operating system features that the package can 
+	use, in the form of M4 macro calls.''}
+    \end{quote}
+  \item \emph{GNU Automake}\cite{gnu:automake}
+    \begin{quote}
+      \emph{``Automake is a tool for automatically generating `Makefile.in' files compliant with the GNU Coding Standards. Automake 
+	requires the use of Autoconf.''}
+    \end{quote}
+    Maybe the GNU Project description is not comprehensible enough.\\
+    GNU Automake produces portable makefiles for use by the make program, used in compiling software. The makefiles produced follow the 
+    GNU Coding Standards.
+  \item \emph{GNU Libtool}\cite{gnu:libtool}
+    \begin{quote}
+      \emph{``GNU libtool is a generic library support script. Libtool hides the complexity of using shared libraries behind a consistent, 
+	portable interface.''}
+    \end{quote}
+    It also gives us a cross-platform wrap for the dynamic libraries management functions.
+\end{list}
+In this case we also had alternatives. 
+\begin{list}{-}{This set is formed by:}
+  \item \emph{CMake} - It is a cross-platform build system generator that is being widely adopted and proven for large scale software 
+    development.
+    \emph{CMake} uses its own scripting language. The implementation architecture is far more unified than GNU Autotools and it runs much 
+    faster.
+  \item \emph{Scons} - It is also cross-platform. Based on a full-fledged programming language, Python. This means you can make the build 
+    system do pretty much anything you can figure out how to program, if it doesn't do it already. This also means it doesn't reinvent the 
+    wheel, and uses a tried-and-proven syntax. Can be distributed with the software product, so users do not need to install it. This 
+    reduces the dependencies your users need to python, which almost everyone already has (or can easily get).
+\end{list}
+Although those are options to consider, and we will in the future, by now we decided to use \emph{Autotools} because it is the most 
+standard way to build cross-platform packages, and because by now is still the most adopted one.
+\subsection{GIT}
+This is our choice for version control system\cite{git}:
+\begin{quote}
+  \emph{``Git is a free and open source distributed version control system designed to handle everything from small to very large projects 
+    with speed and efficiency.\\
+    Git is easy to learn and has a tiny footprint with lightning fast performance. It outclasses SCM tools like Subversion, CVS, Perforce,
+    and ClearCase with features like cheap local branching, convenient staging areas, and multiple workflows.''}
+\end{quote}
+Right now is the most adopted tool for that matter and it is being used for large projects. It also gave us the opportunity of using
+the \url{http://github.com} hosting service for projects source code.
+\subsection{KDevelop}
+This is the IDE choice\cite{kdevelop}. As the IDE is very personal choice that does not concern other developers in the project, I did 
+not choose the most ``standard'' or easy to use for other developers. After trying some different C/C++ IDEs like Eclipse, Netbeans and 
+KDevelop, I stayed with KDevelop because it is the most friendly and with the most useful features for me.\\
+It has strong support for \emph{CMake}, which could be very useful in the future, and supports Autotools just fine.
+\begin{quote}
+  \emph{``Kdevelop is a free, open source IDE (Integrated Development Environment) for Linux, Solaris, FreeBSD, Max OS X and other Unix 
+    flavours.\\
+    It is a feature-full, plugin extensible IDE for C/C++ and other programming languages.\\
+    It is based on KDevPlatform, and the KDE and Qt libraries.''}
+\end{quote}
+We should mention that KDevelop, as the other IDEs mentioned, uses \emph{GDB} for debugging, which is pretty useful.
+\subsection{Valgrind}
+Another \emph{reactor} lifesaver\cite{valgrind}:
+\begin{quote}
+  \emph{``Valgrind is a GPL'd system for debugging and profiling Linux programs. With Valgrind's tool suite you can automatically detect 
+    many memory management and threading bugs, avoiding hours of frustrating bug-hunting, making your programs more stable. You can also 
+    perform detailed profiling to help speed up your programs.''}
+\end{quote}
+\subsection{GLib}
+\begin{quote}
+  \emph{``GLib provides the core application building blocks for libraries and applications written in C. It provides the core object 
+    system used in GNOME, the main loop implementation, and a large set of utility functions for strings and common data structures.''}
+\end{quote}
+\emph{GLib}\footnote{GNOME Library is not to be confused with glibc (GNU C Library).} is mainly used by us for its generic data structures 
+like hash tables and lists, and its operations. We wrapped it with our own interface so we can easily make our own specific data 
+structures.
+\subsection{libevent}
+\begin{quote}
+  \emph{``The libevent API provides a mechanism to execute a callback function when a specific event occurs on a file descriptor or after 
+    a timeout has been reached. Furthermore, libevent also support callbacks due to signals or regular timeouts.\\
+    libevent is meant to replace the event loop found in event driven network servers. An application just needs to call event\_dispatch() 
+    and then add or remove events dynamically without having to change the event loop.''}
+\end{quote}
+We use \emph{libevent}\cite{libevent} in \emph{reactord} to monitor the socket file descriptors to see if they are ready for I/O, instead
+of using directly the non-POSIX Linux's \emph{epoll()}, or the POSIX compliant but less scalable \emph{poll89}. \emph{libevent} is a wrap 
+for this functions that takes the decision of when is the best time to use which function, and makes it more easy to use. Also is 
+cross-platform and works in Windows.
+\subsection{Check}
+For the most complex parts of the code, and the most likely to be changing we used Check\cite{check} as unit testing framework.
+\begin{quote}
+  \emph{``Check is a unit testing framework for C. It features a simple interface for defining unit tests, putting little in the way of 
+    the developer. Tests are run in a separate address space, so Check can catch both assertion failures and code errors that cause 
+    segmentation faults or other signals. The output from unit tests can be used within source code editors and IDEs.''}
+\end{quote}
+It is really simple and useful. The learning curve is very little even if you haven't used unit testing frameworks before.
+\section{Methodology}
+We did not followed a concrete implementation strategy for the whole project apart from iteration based methodology in which we changed
+the design of the project when we were implementing it. This way we fixed design mistakes detected, for example, when executing it. Also we
+added to the design features with a low difficulty/usefulness ratio whenever we thought of them.\\
+Once implemented we tested manually most of the pieces of code. For the most complicated parts we did use a concrete methodology for the
+implementation, based on unit testing of the finished work. This methodology is called \emph{test-driven development}, also known as
+``test a little, code a little'', and as you can infer from its names is based on first defining the tests as function specifications, and
+then implementing the functions. This way we assure that our implementation comply with our functions specification, and that when we 
+modify it we don't break anything.
+\section{Daemon}
+\label{sec:impdaemon}
+As we said in the previous sections, the daemon is mainly a server waiting for messages from different sources to manage them. For such
+a communication, in UNIX we have several ways to interact between applications like files, signals, pipes, shared memory or sockets.\\
+We thought that for our purposes, which involves both local and remote communications the best and easiest way to achieve them is 
+using sockets.\\
+For control messages we use a UNIX domain stream socket, which only work in local.\\
+For remote events we use an Internet domain stream socket.\\
+We do not have any main-loop in our code for receiving messages, because as we said we use \emph{libevent} to manage the monitoring in the
+sockets.\\
+There are two parts of the design that has not been implemented yet because of the lack of time. Those are the credential control and 
+the BFS to control the two separe graphs issue. The lack of them does not break anything but the first one changes the behaviour of
+the workflow.\\
+\\
+Using an imperative programming language instead of an object oriented programming language, the implementation differs from the design 
+but keeping the essence and the functionality.
+% \subsection{Tools}
+\subsection{Code structure}
+The conceptual model (\emph{section \ref{sec:dcm}}) classes will be implemented in modules. Each class will be, at least, one module with
+an struct with the attributes, and the methods as functions. In case the class has some 'private' attributes, such as reference counters,
+we will use opaque structs and getter/setter functions. Even though that we will try to avoid the abstraction for the sake of 
+abstraction.\\
+In the \texttt{Reactord}'s class case, we have the \texttt{reactord} main module but we moved some
+functionalities into different modules. We have the \texttt{inputhandlers} module which contain the handlers for events, 'rm-transition'
+command and 'add-rule'. Also we have the remote communication wrapper functions in the \texttt{remote} module.
+\subsection{Code to consider}
+\subsubsection{PROP execution}
+The execution of the propagation is done by calling the propagation function as a thread:
+\begin{minted}[linenos,
+               numbersep=5pt,
+               frame=lines,
+               framesep=2mm]{c}
+
+void action_do(struct r_action *raction){
+    pthread_t t1;
+    int s;
+    if(raction == NULL){
+        dbg("No action to run", NULL);
+        return;
+    }
+    switch(raction->atype){
+        case CMD:
+            cmd_execute((struct cmd_action *) raction->action);
+            break;
+        case PROP:
+            s = pthread_create(&t1, NULL, 
+                 prop_execute_thread, 
+                 (void *) raction->action);
+            if(s != 0)
+                dbg("Unable to create the thread to propagate the events", 
+                  strerror(s));
+            break;
+        default:
+            /* CMD_NONE */
+            break;
+    }
+}
+\end{minted}
+We can see in line 13 that we call \texttt{prop\_execute\_thread} with \texttt{pthread\_create}. We do this that way because if we
+propagate the events to localhost, then we enter in a deadlock where \texttt{prop\_execute\_thread} is waiting for an ack that can not 
+arrive because it can't reach the code to attend the received events.
+\subsubsection{Action polymorphism}
+To implement the polymorphism-like behaviour of the actions, we simply use a \texttt{void} pointer in the \texttt{action} struct, and an 
+identifier of the type of this \texttt{void} pointer content. The common functions for all the actions will check the type and call the
+correct function:
+\begin{minted}[linenos,
+               numbersep=5pt,
+               frame=lines,
+               framesep=2mm]{c}
+struct r_action{
+  enum a_types atype;
+  void *action;
+};
+\end{minted}
+\section{Command line program}
+There is nothing really remarkable in the implementation of the command line program. It is just a single
+module with the main function checking for the entry arguments. The arguments control is performed with the \texttt{getopts} library from
+\emph{glibc}. The option type is what sets the header of the message and the content is just sent along with the header without being 
+checked.
+% \subsection{Code structure}
+% \subsection{Code to consider}
+\section{Shared library}
+We use \emph{Libtool} to build \emph{libreactor}. Here is from \emph{reactord}, \emph{reactorctl} and any other application that 
+communicates locally with \emph{reactord} get thefile descriptor of the UNIX domain stream socket used for that communication.
+\subsection{Code structure}
+The code is organized by the functionalities of \emph{libreactor}. 
+\begin{list}{-}{We have four modules:}
+  \item \texttt{cntrl}\\
+	  Local communication logic.
+  \item \texttt{parser}\\
+	  Rule parser logic.
+  \item \texttt{log}\\
+	  Syslog wrappers.
+  \item \texttt{util-private}\\
+	  By now this only contains wrappers to the \texttt{read} and \texttt{write} syscalls. This is useful for the unit testing so we 
+	  can mock them without the need of really reading or writing in any file. Explained later.
+\end{list}
+Each of them has a header, and also there are headers for the plugin's interface and a global one that includes all of them.
+% \subsection{Code to consider}
+% \section{Plugins}
+% \subsection{Tools}
+% \subsection{Code structure}
+% \subsection{Code to consider}
+% \subsection{Dynamic modules interface}
+% \subsection{Workers manager}
+% \subsection{'Files' worker}
+\section{Tests}
+The tests of this project are centred on the most complex pieces of code. For this we make unit testing with \emph{Check} framework.
+The decision of making unit tests was taken when the project already began the development and had some parts already done. It was when 
+we saw that some pieces of code were easily breakable by additions and modifications that we began to look for unit testing
+frameworks for programs written in C language.\\
+\\
+We made tests for the control messages communication and for the parser.
+\subsection{Control}
+We check four things on this tests:
+\begin{itemize}
+  \item {\bf Connection} - Checks that we can both listen and connect correctly, so we obtain valid socket file descriptors
+  \item {\bf Correct message receiving} - Checks that in normal conditions the message arrives correctly to the user of 
+    \texttt{libreactor-cntrl}.
+  \item {\bf Shorter message receiving} - Simulates an unexpected disconnection. We receive a header with a size for the rest of the
+    message, but the message is shorter. The result is supposed to be a NULL message.
+  \item {\bf Error message receiving} - Checks that \texttt{libreactor-cntrl} behaves as expected when \texttt{read} fails 
+    (returns -1).
+\end{itemize}
+What we are testing here are functions that make use of the syscalls \texttt{read} and \texttt{write}, and for our tests we want them to
+return some specific values, or act as they failed.\\
+With this purpose we made wrappers for these syscalls in \emph{libreactor}:
+\begin{minted}[linenos,
+               numbersep=5pt,
+               frame=lines,
+               framesep=2mm]{c}
+ssize_t reactor_read(int fd, void *buf, size_t count){
+    return read(fd, buf, count);
+}
+
+ssize_t reactor_write(int fd, void *buf, size_t count){
+    return write(fd, buf, count);
+}
+\end{minted}
+As you can see they do not change anything in the behaviour of the system calls, and they are used always \texttt{read} or \texttt{write}
+are needed.\\
+But on the tests we reimplement these functions to make mocks of them. This means that in the tests, the software will act as the syscalls
+were real, but they are just dummy functions. So in the tests what it is being used is:
+\begin{minted}[linenos,
+               numbersep=5pt,
+               frame=lines,
+               framesep=2mm]{c}
+ssize_t reactor_read(int fd, void *buf, size_t count){
+    struct r_msg *msg = NULL;
+    int msgsize = 0;
+    int leastsize = 0;
+    switch(fd){
+        case READ_CORRECT:
+            msg = &eventmsg;
+            break;
+        case READ_SHORT:
+            msg = &badeventmsg;
+            break;
+        case READ_ERROR:
+            return -1;
+        default:
+            msg = &ackmsg;
+    }
+    if(msgp == NULL) 
+        msgp = (void *) msg;
+    msgsize = sizeof(*msg);
+    leastsize = msgsize - (int) (msgp - (void *) msg);
+    if(count > leastsize) 
+        count = leastsize;
+    memcpy(buf, msgp, count);
+    msgp+= count;
+    return count;
+}
+
+ssize_t reactor_write(int fd, void *buf, size_t count){
+    switch(fd){
+        case WRITE_CORRECT:
+            break;
+        case WRITE_SHORT:
+            count = count > 0 ? count -1 : count;
+        case WRITE_ERROR:
+            return -1;
+    }
+    return count;
+}
+\end{minted}
+We are using the file descriptor number to code what we want to receive from the system calls.
+\subsection{Parser}
+We test both the \emph{reactord} parser, and the less specific \emph{libreactor} parser. The things we check are:
+\begin{itemize}
+  \item When there is a subexpression, the parser detects it fine whether if it has separators on it or just one token. i.e.:
+    ``\texttt{A B }{\bf e1}\texttt{ NONE}'' and ``\texttt{A B }{\bf e1\&e2 \&e3}\texttt{ NONE}''.
+  \item An empty subexpression is an error. i.e.: ``\texttt{A B e1\& \& e2 NONE}''.
+  \item An empty rule is a NULL parse tree (empty line).
+  \item Ignores comments.
+  \item The \texttt{Action} part of the \emph{reactord} parse tree is built correctly.
+\end{itemize}
