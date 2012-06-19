@@ -32,8 +32,8 @@ int main(int argc, char *argv[]) {
     enum rmsg_type mtype;
     const struct option options[] = {
         { "event", required_argument, NULL, 'e' },
-        { "add-rule", required_argument, NULL, 'r' },
-        { "remove-transition", required_argument, NULL, 't' }
+        { "add-rule", required_argument, NULL, 'a' },
+        { "remove-transition", required_argument, NULL, 'r' }
     };
     
     const char *optstring = "e:a:r:";

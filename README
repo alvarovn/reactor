@@ -1,0 +1,84 @@
+Quick user manual for reactor
+=======================
+
+* Installation
+    Read the INSTALL file in this reactor package distribution.
+
+* Usage
+    - Put all the users you want to be able to have their state machines loaded 
+      when reactor starts in the group called 'events' (created during the 
+      reactor's installation).
+    - The users in this group should have a file called '.reactor.rules' in their 
+      home directories. Those files contain the reactor rules.
+    - The format of the rules is:
+        FROM_STATE TO_STATE event1 & event2 & event3 TYPE_OF_ACTION action
+      The possible types of action are:
+        CMD - Shell command.
+        PROP - Address to propagate the events (host:port).
+        NONE - Nothing to do.
+    - Start reactord as root and all these rules will be automatically loaded.
+    - If your user is not in the 'events' group, there is still the possibilty of 
+      using the command line to add non-persistent rules like this:
+        reactorctl -a FROM_STATE TO_STATE event1 & event2 & event3 TYPE_OF_ACTION action
+    - The command for sending events to reactord is like:
+        reactorctl -e event1
+    - If you want to delete a transition from the state machines the command is 
+      like:
+        reactorctl -r STATE_ID.X
+      Where 'X' is the number of the outter transition from the state with the
+      identificator STATE_ID. This number corresponds to the order in which the
+      transition were added from a state.
+
+
+Plugin programming manual for reactor
+=====================================
+
+Your plugin will need at least a '.c' file with the following include:
+
+#include <rctrplugin.h>
+
+and two functions:
+
+struct rp_info* rp_init_plugin(const struct rp_services *params);
+    This is the function where you set the information about the plugin for
+    reactord like this:
+
+        struct rp_info *info;
+        if((info = (struct rp_info *)calloc(1, sizeof(struct rp_info))) == NULL){
+            return NULL;
+        }
+        info->version.major = 0;
+        info->version.minor = 1;
+        info->name = strdup("SuperPlugin");
+        info->mainfunc = scheduler;
+        info->next = NULL;
+        
+        return info;
+
+    * version.major - Major version of the plugin.
+    * version.minor - Minor version of the plugin.
+    * name - Name to identify the plugin.
+    * mainfunc - The function which will act as job-scheduling worker.
+    * next - This is another rp_info struct to define another service/worker in 
+        the same plugin.
+
+RPMainFunc
+    This is the mainfunc in the rp_info struct. It is the worker main function and 
+    may look like:
+
+        void* scheduler(void *params){
+            struct rp_services *serv;
+            if(params == NULL){
+                return NULL;
+            }
+            serv = (struct rp_services *) params;
+            serv->eventhandler("e1");
+        }
+    As you can see this example is not actually acting as a worker, because it 
+    ends almost immediately.
+    The eventhandler function pointer from the parameters is the one that triggers
+    events in the reactord side.
+
+This file must be compiled as a shared object with the rp_init_plugin symbol 
+visible.
+We recommend libtool in order to do that.

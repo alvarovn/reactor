@@ -1,27 +1,50 @@
+Installation instructions for reactor
+=======================================
+
+This is reactor, an state-driven job-scheduler.
+
 Unpacking
 =========
 
-TODO
+The distribution arrives in .tar.gz format though OS/distribution packaging
+is possible. The file is named:
+
+        reactor-x.x.x.tar.gz
+
+where x.xx stands for the version number. You must have tar and gzip to
+unpack the distribution (sorry, compress is not supported). If you have GNU
+tar simply execute the following command:
+
+        tar xvfz reactor-x.x.x.tar.gz
+
+If your version of tar doesn't support z (most non-GNU tars), you should
+execute this one:
+
+        gunzip -c reactor-x.x.x.tar.gz | tar xvf -
+
+After this, you'll get a directory named reactor-x.x.x, where the source for
+reactor will be unpacked.
 
 Compiling
 =========
 
-reactor requires gcc as a C compiler (at least version TODO x.x.x).
+reactor requires gcc as a C compiler (at least version 4.4.5).
 
 reactor relies on a number of third party libraries in order to be
 compiled, these are:
-  * GLib a cross-platform software utility library.
-  * Libevent an asynchronous file descriptor event notification software 
+  * GLib (at least version 2.24) - A cross-platform software utility library.
+  * Libevent (at least version 1.4) - An asynchronous file descriptor event notification software 
     library.
+  * Check (at least version 0.9.8) - A C simple unit testing framework.
 
-Once these libraries are installed, you can start compiling syslog-ng:
+Once these libraries are installed, you can start compiling reactor:
 
 cd to the reactor directory, and execute the following commands:
 
         ./configure
         make
 
-After the make cycle finishes, you'll get two executables in the src
+After the make cycle finishes, you'll get two executables in the 'src'
 directory:
 
    reactord            - the main daemon binary
