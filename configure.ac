@@ -64,7 +64,7 @@ AC_ARG_ENABLE(debug,
 #AM_CONDITIONAL(ENABLE_DEBUG, test "$enable_debug" = "yes")
 CFLAGS="$DEBUG_CFLAGS"
 
-reactorplugindir="$libdir/$PACKAGE/reactor_plugin_version"
+reactorplugindir="$libdir/$PACKAGE"
 
 AC_SUBST(reactorplugindir)
 

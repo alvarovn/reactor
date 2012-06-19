@@ -72,7 +72,7 @@ int load_module(const char *modpath, RSList *workers){
     struct rp_services *serv;
     char *erro;
     RPInitFunc initfunc;
-    struct rp_info  *info = NULL,
+    struct rp_info  *rpinfo = NULL,
                     *infop;
         
     if((serv = get_worker_services()) == NULL){
@@ -90,14 +90,14 @@ int load_module(const char *modpath, RSList *workers){
     }
     (void) dlerror();
     erro = NULL;
-    initfunc = (RPInitFunc)dlsym(modhandler, "rw_init_plugin");
+    initfunc = (RPInitFunc)dlsym(modhandler, "rp_init_plugin");
     erro = dlerror();
     if(erro != NULL)
         goto invalid;
-    if((info = initfunc(serv)) == NULL){
+    if((rpinfo = initfunc(serv)) == NULL){
         goto invalid;
     }
-    infop = info;
+    infop = rpinfo;
     while(infop != NULL){
 //         TODO Errors here will make the function return -1 but it added new workers. Fix it.
         if(reactor_hash_table_lookup(workers, infop->name) != NULL){
@@ -114,18 +114,20 @@ int load_module(const char *modpath, RSList *workers){
         rwkr->mainfunc = infop->mainfunc;
         rwkr->initfunc = initfunc;
         rwkr->name = infop->name;
+        /* TODO worker thread must be executed only if it is a worker plugin */
         if(pthread_create(&(rwkr->pt), NULL, rwkr->mainfunc, (void *) serv) != 0){
             warn("Cannot run the reactor worker");
             dbg_e("pthread_create() error", NULL);
             free_worker(rwkr);
             continue;
         }
-        reactor_hash_table_insert(workers, info->name, rwkr);
+        info("'%s' plugin loaded", rwkr->name);
+        reactor_hash_table_insert(workers, rpinfo->name, rwkr);
         infop = infop->next;
     }
 end:
     // TODO Those frees should be on a public free_infos() or something like that
-    free_infos(info);
+    free_infos(rpinfo);
     return ret;
 invalid:
     warn("'%s' is not a valid reactor worker module", modpath);
