@@ -58,14 +58,19 @@ State* state_get_fsminitial(State *ste){
 
 void state_unref(struct reactor_d *reactor, State *ste){
     Transition *aux;
-    if(ste == NULL || --ste->refcount > 0) 
+    if( ste == NULL || 
+        --ste->refcount > 1 ||
+        (ste->refcount == 1 && ste != ste->fsminitial) ) 
+    {
         return;
+    }
     for(;ste->transitions != NULL;){
         aux = ste->transitions;
         ste->transitions = trans_clist_free_1(reactor, aux);
     }
 //     trans_clist_free_full(reactor, ste->transitions);
-    state_unref(reactor, ste->fsminitial);
+    if(ste != ste->fsminitial)
+        state_unref(reactor, ste->fsminitial);
     reactor_hash_table_remove(reactor->states, ste->id);
     info("State '%s' removed", ste->id);
     free(ste->id);

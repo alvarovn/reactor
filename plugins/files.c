@@ -19,6 +19,7 @@
 */
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "rctrplugin.h"
 
@@ -34,7 +35,10 @@ void* scheduler(void *params){
         return NULL;
     }
     serv = (struct rp_services *) params;
-    serv->eventhandler("e1");
+    for(;;){
+        sleep(2);
+        serv->eventhandler("timer2sec");
+    }
 }
 
 __attribute__ ((visibility("default"))) struct rp_info* rp_init_plugin(const struct rp_services *params){
@@ -46,7 +50,7 @@ __attribute__ ((visibility("default"))) struct rp_info* rp_init_plugin(const str
     }
     info->version.major = 0;
     info->version.minor = 1;
-    info->name = strdup("Files");
+    info->name = strdup("Timer");
     info->mainfunc = scheduler;
     info->next = NULL;
     

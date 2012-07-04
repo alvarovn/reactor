@@ -63,7 +63,7 @@ enum rmsg_type reactor_add_rule_handler(struct reactor_d *reactor, struct r_rule
     init = (from = (State *) reactor_hash_table_lookup(reactor->states, fromstr)) == NULL;
     if(init){
         from = state_new(reactor, fromstr);
-//         state_set_fsminitial(from, from);
+        state_set_fsminitial(from, from);
     }
     
     to = (State *) reactor_hash_table_lookup(reactor->states, tostr);
@@ -119,7 +119,7 @@ R_EXPORT int reactor_event_handler(struct reactor_d *reactor, const char *msg){
     Transition  *trans = NULL, 
                 *transinit = NULL, 
                 *transindex = NULL;
-    
+
     error = 0;
     en = (EventNotice *) reactor_hash_table_lookup(reactor->eventnotices, msg);
     if(en == NULL) {

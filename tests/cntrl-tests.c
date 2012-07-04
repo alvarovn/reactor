@@ -62,7 +62,9 @@ void *msgp;
 // void teardown(void){  
 //     close_cntrl(sfd);
 // }
-
+/*
+ * read() mock
+ */
 ssize_t reactor_read(int fd, void *buf, size_t count){
     struct r_msg *msg = NULL;
     int msgsize = 0;
@@ -90,6 +92,9 @@ ssize_t reactor_read(int fd, void *buf, size_t count){
     return count;
 }
 
+/*
+ * write() mock
+ */
 ssize_t reactor_write(int fd, void *buf, size_t count){
     switch(fd){
         case WRITE_CORRECT:
@@ -118,7 +123,7 @@ START_TEST(test_receive_normal){
     
     msgp = NULL;
     rmsg = receive_cntrl_msg(READ_CORRECT);
-    fail_unless(strcmp(rmsg->msg, EID) == 0);
+    fail_unless( strcmp(rmsg->msg, EID) == 0 );
     if(rmsg != NULL){
         free(rmsg->msg);
         free(rmsg);
