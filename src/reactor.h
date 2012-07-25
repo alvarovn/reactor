@@ -112,20 +112,22 @@ void en_remove_one_curr_trans(EventNotice *en, Transition *trans);
 typedef struct _state State;
 
 State* state_new(struct reactor_d *reactor, const char* id);
-void state_unref(struct reactor_d *reactor, State *ste);
+bool state_unref(struct reactor_d *reactor, State *ste);
 void state_add_trans(State *ste, Transition *trans);
-const char* state_get_id(State *ste);
+const char* state_get_id(const State *ste);
 void state_ref(State *ste);
 Transition* state_get_trans(State *ste);
 void state_set_fsminitial(State *ste, State *fsminitial);
 State* state_get_fsminitial(State *ste);
+State* state_search(const State *init, const char *sid);
 
 /* transition.c */
 typedef struct cmd_action;
 
 Transition* trans_new(State *dest);
 bool trans_set_action(Transition *trans, struct r_action *action);
-Transition* trans_clist_free_1(struct reactor_d *reactor, Transition *trans);
+void trans_free(struct reactor_d *reactor, Transition *trans);
+Transition* trans_clist_free(struct reactor_d *reactor, Transition *trans);
 bool trans_notice_event(Transition *trans);
 void trans_add_requisite(Transition *trans, EventNotice *en);
 const State* trans_get_dest(Transition *trans);

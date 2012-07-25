@@ -56,36 +56,56 @@ State* state_get_fsminitial(State *ste){
     return ste->fsminitial;
 }
 
-void state_unref(struct reactor_d *reactor, State *ste){
-    Transition *aux;
+
+bool state_unref(struct reactor_d *reactor, State *ste){
+    Transition *trans;
+    Transition *fwd;
+
     if( ste == NULL || 
         --ste->refcount > 1 ||
-        (ste->refcount == 1 && ste != ste->fsminitial) ) 
-    {
-        return;
+        (ste->refcount == 1 && ste != ste->fsminitial)
+    ){
+        // Let's check if a cycle created two non-connex components of the state machine.
+        // If so, remove the cycle side.
+        if( ste != ste->fsminitial ||
+            state_search( state_get_fsminitial( ste ), state_get_id( ste ) ) == NULL
+        ){
+            fwd = state_get_trans(ste);
+            state_set_trans(ste, NULL);
+            trans_clist_free(reactor, fwd);
+            return true;
+        }
+        return false;
     }
-    for(;ste->transitions != NULL;){
-        aux = ste->transitions;
-        ste->transitions = trans_clist_free_1(reactor, aux);
-    }
-//     trans_clist_free_full(reactor, ste->transitions);
+    trans = ste->transitions;
+    ste->transitions = NULL;
+    trans_clist_free(reactor, trans);
+
     if(ste != ste->fsminitial)
         state_unref(reactor, ste->fsminitial);
     reactor_hash_table_remove(reactor->states, ste->id);
     info("State '%s' removed", ste->id);
     free(ste->id);
     free(ste);
+    return true;
 }
 
 void state_add_trans(State *ste, Transition *trans){
+    if( ste == NULL || 
+        trans == NULL
+    ){
+        return;
+    }
     ste->transitions = trans_clist_merge(ste->transitions, trans);
 }
 
 void state_set_trans(State *ste, Transition *trans){
+    if(ste == NULL) 
+        return;
     ste->transitions = trans;
 }
 
-const char* state_get_id(State *ste){
+const char* state_get_id(const State *ste){
     return ste->id;
 }
 
@@ -98,4 +118,43 @@ void state_ref(State *ste){
 Transition* state_get_trans(State *ste){
     if(ste == NULL) return NULL;
     return ste->transitions;
+}
+
+static State* state_dfs_search(const State *ste, const char *sid, RHashTable *visited){
+    Transition *ftrans,
+               *itrans;
+    State *ret = NULL;
+    
+    reactor_hash_table_insert(visited, ste->id, true);
+    if( strcmp(sid, ste->id) == 0 ) 
+        return ste;
+    if( ste->transitions == NULL )
+        return NULL;
+    
+    ftrans = ste->transitions;
+    itrans = ftrans;
+    do{
+        if( reactor_hash_table_lookup( visited, (trans_get_dest(itrans))->id ) == false ){
+            ret = state_dfs_search( trans_get_dest(itrans), sid, visited);
+        }
+        itrans = trans_clist_next(ftrans);
+    }while(itrans != ftrans && ret == NULL);
+    
+    return ret;
+}
+
+State* state_search(const State *init, const char *sid){
+    RHashTable *visited;
+    State *ret;
+    
+    if( init == NULL ||
+        sid == NULL
+    ){
+        return NULL;
+    }
+    
+    visited = reactor_hash_table_new((RHashFunc) reactor_str_hash, (REqualFunc) str_eq);
+    ret = state_dfs_search(init, sid, visited);
+    reactor_hash_table_destroy(visited);
+    return ret;
 }

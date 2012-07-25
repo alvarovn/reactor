@@ -54,18 +54,24 @@ end:
 }
 
 Transition* trans_clist_merge(Transition* clist1, Transition* clist2){
-    Transition *aux;
+    Transition *cl1last,
+               *cl2last;
     
-    if(clist1 == NULL){
-        clist1 = clist2;
-        goto end;
-    }
-    aux = clist1->clistnext;
-    clist1->clistnext = clist2->clistnext;
-    clist2->clistnext = aux;
-    clist2->clistnext->clistprev = clist2;
-    clist1->clistnext->clistprev = clist1;
-end:
+    if(clist2 == NULL)
+        return clist1;
+    if(clist1 == NULL)
+        return clist2;
+
+    cl1last = clist1->clistprev;
+    cl2last = clist2->clistprev;
+    
+    // clist2 will be from clist1->clistprev to clist1.
+    // This way the transitions are in order of addition following the clistnext pointer.
+    clist1->clistprev = cl2last;
+    cl2last->clistnext = clist1;
+    clist2->clistprev = cl1last;
+    cl1last->clistnext = clist2;
+    
     return clist1;
 }
 
@@ -118,20 +124,53 @@ end:
     return success;
 }
 
-Transition* trans_clist_free_1(struct reactor_d *reactor, Transition *trans){
-    Transition *ret;
+// Transition* trans_clist_free_1(struct reactor_d *reactor, Transition *trans){
+//     Transition *ret;
+//     if(trans == NULL) return NULL;
+//     if(trans->enrequisites != NULL)
+//         reactor_slist_foreach(trans->enrequisites, en_remove_one_curr_trans, trans);
+//     while(trans->enrequisites != NULL){
+//         en_unref(reactor, trans->enrequisites->data);
+//         trans->enrequisites = reactor_slist_delete_link(trans->enrequisites, trans->enrequisites);
+//     }
+//     ret = trans_clist_remove_link(trans);
+//     
+//     // Let's check if a cycle created two non-connex components of the state machine.
+//     // If so, remove the cycle side.
+//     if( !state_unref(reactor, trans->dest) &&
+//         state_search( state_get_fsminitial( trans->dest ), state_get_id( trans->dest ) ) == NULL
+//     ){
+//         trans_clist_free(reactor, state_get_trans(trans->dest));
+//     }
+//     action_free(trans->raction);
+//     free(trans);
+//     return ret;
+// }
+
+void trans_free(struct reactor_d *reactor, Transition *trans){
     if(trans == NULL) return NULL;
     if(trans->enrequisites != NULL)
         reactor_slist_foreach(trans->enrequisites, en_remove_one_curr_trans, trans);
+    
     while(trans->enrequisites != NULL){
         en_unref(reactor, trans->enrequisites->data);
         trans->enrequisites = reactor_slist_delete_link(trans->enrequisites, trans->enrequisites);
     }
-    ret = trans_clist_remove_link(trans);
+    
     state_unref(reactor, trans->dest);
     action_free(trans->raction);
     free(trans);
-    return ret;
+}
+
+Transition* trans_clist_free(struct reactor_d *reactor, Transition *trans){
+    Transition *aux;
+    
+    for(;trans != NULL;){
+        aux = trans;
+        trans = trans_clist_remove_link(trans);
+        trans_free(reactor, aux);
+    }
+    return trans;
 }
 
 bool trans_notice_event(Transition *trans){

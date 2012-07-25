@@ -28,17 +28,17 @@
 // }
 
 void* scheduler(void *params){
-    struct rp_services *serv;
-    
-    if(params == NULL){
-        // We can't log, because the callbacks should be on params.
-        return NULL;
-    }
-    serv = (struct rp_services *) params;
-    for(;;){
-        sleep(2);
-        serv->eventhandler("timer2sec");
-    }
+//     struct rp_services *serv;
+//     
+//     if(params == NULL){
+//         // We can't log, because the callbacks should be on params.
+//         return NULL;
+//     }
+//     serv = (struct rp_services *) params;
+//     for(;;){
+//         sleep(2);
+//         serv->eventhandler("timer2sec");
+//     }
 }
 
 __attribute__ ((visibility("default"))) struct rp_info* rp_init_plugin(const struct rp_services *params){

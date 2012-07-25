@@ -190,15 +190,14 @@ enum rmsg_type reactor_rm_trans_handler(struct reactor_d *reactor, char *msg){
         rmt = NO_TRANS;
         goto end;
     }
-    state_ref(state);
     msg[msgp] = '.';
     info("Removing transition %s...", msg);
     trans = state_get_trans(state);
     for (i = 1; i < transnum; i++){
         trans = trans_clist_next(trans);
     }
-    state_set_trans(state, trans_clist_free_1(reactor, trans));
-    state_unref(reactor, state);
+    state_set_trans( state, trans_clist_remove_link(trans) );
+    trans_free(reactor, trans);
     info("Transition %s removed", msg);
 end:
     return rmt;
